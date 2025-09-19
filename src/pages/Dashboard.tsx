@@ -21,12 +21,17 @@ export default function Dashboard() {
   const { isLoading, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   
+  // Move role flags before queries so we can conditionally call them
+  const isTourist = user?.role === "tourist" || !user?.role;
+  const isOfficial = user?.role === "police" || user?.role === "tourism_official" || user?.role === "admin";
+
+  // Queries (conditionally run official-only queries)
   const touristProfile = useQuery(api.tourists.getCurrentProfile);
   const safetyScore = useQuery(api.tourists.getSafetyScore);
   const myAlerts = useQuery(api.alerts.getMyAlerts);
-  const allAlerts = useQuery(api.alerts.getAllActiveAlerts);
-  const alertStats = useQuery(api.alerts.getAlertStats);
-  const allTourists = useQuery(api.tourists.getAllActiveTourists);
+  const allAlerts = useQuery(api.alerts.getAllActiveAlerts, isOfficial ? {} : undefined);
+  const alertStats = useQuery(api.alerts.getAlertStats, isOfficial ? {} : undefined);
+  const allTourists = useQuery(api.tourists.getAllActiveTourists, isOfficial ? {} : undefined);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -45,9 +50,6 @@ export default function Dashboard() {
   if (!isAuthenticated || !user) {
     return null;
   }
-
-  const isTourist = user.role === "tourist" || !user.role;
-  const isOfficial = user.role === "police" || user.role === "tourism_official" || user.role === "admin";
 
   const getSafetyColor = (level: string) => {
     switch (level) {
