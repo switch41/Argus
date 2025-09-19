@@ -86,8 +86,9 @@ export const getAllActiveAlerts = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
+    // Return safe empty array for unauthorized users instead of throwing
     if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
-      throw new Error("Unauthorized");
+      return [];
     }
 
     return await ctx.db
@@ -132,8 +133,15 @@ export const getAlertStats = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
+    // Return safe zeroed stats for unauthorized users instead of throwing
     if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
-      throw new Error("Unauthorized");
+      return {
+        total: 0,
+        active: 0,
+        resolved: 0,
+        averageResponseTime: 0,
+        criticalActive: 0,
+      };
     }
 
     const allAlerts = await ctx.db.query("alerts").collect();
