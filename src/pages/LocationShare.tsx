@@ -17,6 +17,7 @@ export default function LocationShare() {
   const [coords, setCoords] = useState<{ lat: number; lon: number; acc: number } | null>(null);
   const [locationName, setLocationName] = useState("");
   const [isSharing, setIsSharing] = useState(false);
+  const [hasShared, setHasShared] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -40,6 +41,13 @@ export default function LocationShare() {
     );
   }, [isAuthenticated, navigate]);
 
+  useEffect(() => {
+    if (coords && !hasShared && isAuthenticated && !isSharing) {
+      setHasShared(true);
+      void share();
+    }
+  }, [coords, hasShared, isAuthenticated, isSharing]);
+
   const share = async () => {
     if (!coords) {
       toast.error("Location not available");
@@ -59,6 +67,7 @@ export default function LocationShare() {
     } catch (e) {
       console.error(e);
       toast.error("Failed to share location.");
+      setHasShared(false);
     } finally {
       setIsSharing(false);
     }
