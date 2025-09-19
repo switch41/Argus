@@ -58,7 +58,7 @@ function AdvisoryBanners() {
 }
 
 export default function Dashboard() {
-  const { isLoading, isAuthenticated, user } = useAuth();
+  const { isLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
   
   // Move role flags before queries so we can conditionally call them
@@ -160,6 +160,19 @@ export default function Dashboard() {
                 className="font-medium"
               >
                 Profile
+              </Button>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await signOut();
+                  } finally {
+                    navigate("/auth");
+                  }
+                }}
+                className="font-medium"
+              >
+                Logout
               </Button>
             </div>
           </div>
