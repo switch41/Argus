@@ -22,6 +22,7 @@ import type * as auth from "../auth.js";
 import type * as cases from "../cases.js";
 import type * as devices from "../devices.js";
 import type * as exports from "../exports.js";
+import type * as fabric from "../fabric.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   cases: typeof cases;
   devices: typeof devices;
   exports: typeof exports;
+  fabric: typeof fabric;
   http: typeof http;
   messages: typeof messages;
   notifications: typeof notifications;
