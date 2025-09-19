@@ -250,6 +250,71 @@ const schema = defineSchema(
       topRiskAreas: v.array(v.string()),
     })
     .index("by_date", ["date"]),
+
+    // Case management for incidents
+    cases: defineTable({
+      alertId: v.id("alerts"),
+      status: v.union(v.literal("open"), v.literal("assigned"), v.literal("investigating"), v.literal("resolved"), v.literal("closed")),
+      assignedUnit: v.optional(v.id("users")),
+      timeline: v.array(v.object({
+        t: v.number(),
+        note: v.string(),
+        by: v.id("users"),
+      })),
+      priority: v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("urgent")),
+    })
+    .index("by_alert", ["alertId"])
+    .index("by_status", ["status"])
+    .index("by_assigned", ["assignedUnit"]),
+
+    // IoT device signals
+    deviceSignals: defineTable({
+      touristId: v.id("touristProfiles"),
+      type: v.union(v.literal("sos"), v.literal("vitals"), v.literal("location")),
+      payload: v.any(),
+      timestamp: v.number(),
+    })
+    .index("by_tourist", ["touristId"])
+    .index("by_timestamp", ["timestamp"])
+    .index("by_type", ["type"]),
+
+    // Travel advisories
+    advisories: defineTable({
+      title: v.string(),
+      message: v.string(),
+      audience: v.union(v.literal("all"), v.literal("tourists"), v.literal("officials")),
+      area: v.optional(v.object({
+        lat: v.number(),
+        lon: v.number(),
+        radiusKm: v.number(),
+      })),
+      lang: v.optional(v.string()),
+      createdBy: v.id("users"),
+      isActive: v.boolean(),
+    })
+    .index("by_active", ["isActive"])
+    .index("by_audience", ["audience"]),
+
+    // Two-way communication messages
+    messages: defineTable({
+      conversationId: v.string(), // derived from case or user
+      senderId: v.id("users"),
+      body: v.string(),
+      t: v.number(),
+    })
+    .index("by_conversation", ["conversationId"]),
+
+    // Audit logs for security
+    auditLogs: defineTable({
+      actorId: v.id("users"),
+      action: v.string(),
+      targetType: v.string(),
+      targetId: v.string(),
+      details: v.optional(v.any()),
+      t: v.number(),
+    })
+    .index("by_actor", ["actorId"])
+    .index("by_target", ["targetType", "targetId"]),
   },
   {
     schemaValidation: false,

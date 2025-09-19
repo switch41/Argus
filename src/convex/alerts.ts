@@ -185,3 +185,71 @@ export const assignAlert = mutation({
     return { success: true };
   },
 });
+
+// List recent anomalies
+export const listRecentAnomalies = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
+      return [];
+    }
+
+    return await ctx.db
+      .query("alerts")
+      .withIndex("by_resolved", (q) => q.eq("isResolved", false))
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("alertType"), "inactivity"),
+          q.eq(q.field("alertType"), "deviation"),
+          q.eq(q.field("alertType"), "health_emergency")
+        )
+      )
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("severity"), "medium"),
+          q.eq(q.field("severity"), "high"),
+          q.eq(q.field("severity"), "critical")
+        )
+      )
+      .order("desc")
+      .collect();
+  },
+});
+
+// List all incidents with pagination
+export const listAllIncidents = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
+      return [];
+    }
+
+    return await ctx.db
+      .query("alerts")
+      .order("desc")
+      .take(args.limit || 50);
+  },
+});
+
+// Extend getAllActiveAlerts to accept optional severity filter
+export const getAllActiveAlertsFiltered = query({
+  args: { severity: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"), v.literal("critical"))) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
+      return [];
+    }
+
+    let query = ctx.db
+      .query("alerts")
+      .withIndex("by_resolved", (q) => q.eq("isResolved", false));
+
+    if (args.severity) {
+      query = query.filter((q) => q.eq(q.field("severity"), args.severity));
+    }
+
+    return await query.order("desc").collect();
+  },
+});

@@ -60,7 +60,7 @@ export default function NotificationsPage() {
             ) : notifications.length === 0 ? (
               <div className="text-sm text-muted-foreground">No notifications.</div>
             ) : (
-              notifications.map((n) => (
+              notifications.map((n: any) => (
                 <div
                   key={n._id}
                   className={`p-4 border rounded-lg flex items-center justify-between ${
