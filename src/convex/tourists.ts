@@ -174,8 +174,9 @@ export const getAllActiveTourists = query({
   args: {},
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
+    // Return safe empty array for unauthorized users instead of throwing
     if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
-      throw new Error("Unauthorized");
+      return [];
     }
 
     return await ctx.db
