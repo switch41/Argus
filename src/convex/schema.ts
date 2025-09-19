@@ -8,6 +8,8 @@ export const ROLES = {
   TOURIST: "tourist",
   POLICE: "police",
   TOURISM_OFFICIAL: "tourism_official",
+  // Add generic user role
+  USER: "user",
 } as const;
 
 export const roleValidator = v.union(
@@ -15,6 +17,8 @@ export const roleValidator = v.union(
   v.literal(ROLES.TOURIST),
   v.literal(ROLES.POLICE),
   v.literal(ROLES.TOURISM_OFFICIAL),
+  // Include "user" in allowed roles
+  v.literal(ROLES.USER),
 );
 export type Role = Infer<typeof roleValidator>;
 
