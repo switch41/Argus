@@ -18,16 +18,15 @@ export default function LocationShare() {
   const [locationName, setLocationName] = useState("");
   const [isSharing, setIsSharing] = useState(false);
   const [hasShared, setHasShared] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/auth");
-      return;
-    }
+  const acquireLocation = () => {
     if (!navigator.geolocation) {
+      setGeoError("Geolocation not supported by your browser.");
       toast.error("Geolocation not supported.");
       return;
     }
+    setGeoError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setCoords({
@@ -36,9 +35,27 @@ export default function LocationShare() {
           acc: pos.coords.accuracy ?? 0,
         });
       },
-      () => toast.error("Failed to get location."),
-      { enableHighAccuracy: true, timeout: 10000 }
+      (err) => {
+        let message = "Failed to get location.";
+        if (err.code === 1) message = "Permission denied. Please allow location access.";
+        else if (err.code === 2) message = "Position unavailable. Try moving to an open area or check GPS.";
+        else if (err.code === 3) message = "Location request timed out. Please try again.";
+        setGeoError(message);
+        toast.error(message);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
     );
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/auth");
+      return;
+    }
+    if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") {
+      setGeoError("Location requires HTTPS. Please access the app over a secure connection.");
+    }
+    acquireLocation();
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
@@ -93,6 +110,16 @@ export default function LocationShare() {
             <CardTitle>Current Location</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+            {geoError && (
+              <div className="p-3 rounded border border-red-200 bg-red-50 text-sm text-red-800">
+                {geoError}
+                <div className="mt-2">
+                  <Button size="sm" variant="outline" onClick={acquireLocation}>
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className="text-sm text-muted-foreground">
               {coords
                 ? `Latitude: ${coords.lat.toFixed(5)}, Longitude: ${coords.lon.toFixed(5)}`
