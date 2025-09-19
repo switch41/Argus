@@ -8,6 +8,7 @@ import Emergency from "@/pages/Emergency.tsx";
 import LocationShare from "@/pages/LocationShare.tsx";
 import Itinerary from "@/pages/Itinerary.tsx";
 import NotificationsPage from "@/pages/Notifications.tsx";
+import Profile from "@/pages/Profile.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import { StrictMode, useEffect } from "react";
@@ -59,6 +60,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/location" element={<LocationShare />} />
             <Route path="/itinerary" element={<Itinerary />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
