@@ -394,3 +394,43 @@ export const listRecentLocationsAggregated = query({
     });
   },
 });
+
+// Add: Get risk flags for latest itinerary's stops
+export const getItineraryAreaRisks = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    const profile = await ctx.db
+      .query("touristProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .first();
+    if (!profile) return [];
+
+    const latestItinerary = await ctx.db
+      .query("itineraries")
+      .withIndex("by_tourist", (q) => q.eq("touristId", profile._id))
+      .order("desc")
+      .first();
+    if (!latestItinerary || !latestItinerary.plannedRoute?.length) return [];
+
+    // Simple heuristic risk scoring per stop (demo)
+    const toRiskLevel = (lat: number, lon: number) => {
+      const val = Math.abs(Math.sin(lat) + Math.cos(lon)); // 0..2
+      if (val < 0.5) return "safe" as const;
+      if (val < 1.0) return "moderate" as const;
+      if (val < 1.5) return "high_risk" as const;
+      return "critical" as const;
+    };
+
+    return latestItinerary.plannedRoute.map((stop) => ({
+      locationName: stop.locationName,
+      latitude: stop.latitude,
+      longitude: stop.longitude,
+      plannedArrival: stop.plannedArrival,
+      riskLevel: toRiskLevel(stop.latitude, stop.longitude),
+    }));
+  },
+});

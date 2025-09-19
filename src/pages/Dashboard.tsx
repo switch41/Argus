@@ -69,6 +69,8 @@ export default function Dashboard() {
   const touristProfile = useQuery(api.tourists.getCurrentProfile);
   const safetyScore = useQuery(api.tourists.getSafetyScore);
   const myAlerts = useQuery(api.alerts.getMyAlerts);
+  const myItineraries = useQuery(api.tourists.listMyItineraries);
+  const areaRisks = useQuery(api.tourists.getItineraryAreaRisks);
   const allAlerts = useQuery(api.alerts.getAllActiveAlerts, isOfficial ? {} : "skip");
   const alertStats = useQuery(api.alerts.getAlertStats, isOfficial ? {} : "skip");
   const allTourists = useQuery(api.tourists.getAllActiveTourists, isOfficial ? {} : "skip");
@@ -205,36 +207,76 @@ export default function Dashboard() {
               </Card>
             ) : (
               <>
-                {/* Safety Score Card */}
-                <Card className={`${getSafetyBg(safetyScore?.riskLevel || "safe")}`}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className={`h-5 w-5 ${getSafetyColor(safetyScore?.riskLevel || "safe")}`} />
-                      Safety Score
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-3xl font-bold">
-                          {safetyScore?.currentScore || 85}/100
+                {/* Safety Score Card - show only when at least one itinerary exists */}
+                {myItineraries && myItineraries.length > 0 ? (
+                  <Card className={`${getSafetyBg(safetyScore?.riskLevel || "safe")}`}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Shield className={`h-5 w-5 ${getSafetyColor(safetyScore?.riskLevel || "safe")}`} />
+                        Safety Score
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-3xl font-bold">
+                            {safetyScore?.currentScore || 85}/100
+                          </div>
+                          <div className={`text-sm font-medium ${getSafetyColor(safetyScore?.riskLevel || "safe")}`}>
+                            {safetyScore?.riskLevel?.toUpperCase().replace("_", " ") || "SAFE"}
+                          </div>
                         </div>
-                        <div className={`text-sm font-medium ${getSafetyColor(safetyScore?.riskLevel || "safe")}`}>
-                          {safetyScore?.riskLevel?.toUpperCase().replace("_", " ") || "SAFE"}
-                        </div>
+                        <Button 
+                          size="lg"
+                          variant="destructive"
+                          onClick={() => navigate("/emergency")}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          PANIC
+                        </Button>
                       </div>
-                      <Button 
-                        size="lg"
-                        variant="destructive"
-                        onClick={() => navigate("/emergency")}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        PANIC
+
+                      {/* Per-area risk flags from latest itinerary */}
+                      {areaRisks?.length ? (
+                        <div className="mt-4">
+                          <div className="text-sm font-medium mb-2">Area Risk Flags</div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {areaRisks.map((ar: any, i: number) => (
+                              <div key={i} className="p-2 rounded border flex items-center justify-between">
+                                <div className="text-sm">
+                                  {ar.locationName}
+                                  <span className="text-xs text-muted-foreground"> ({ar.latitude.toFixed(3)}, {ar.longitude.toFixed(3)})</span>
+                                </div>
+                                <span className={`text-xs px-2 py-1 rounded ${
+                                  ar.riskLevel === "critical" ? "bg-red-100 text-red-800" :
+                                  ar.riskLevel === "high_risk" ? "bg-orange-100 text-orange-800" :
+                                  ar.riskLevel === "moderate" ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-green-100 text-green-800"
+                                }`}>
+                                  {ar.riskLevel.replace("_", " ").toUpperCase()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  // Prompt to create itinerary to enable safety analysis
+                  <Card className="border-2 border-dashed">
+                    <CardContent className="pt-6 text-center">
+                      <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <h3 className="text-lg font-semibold mb-2">Create an Itinerary to Analyze Area Safety</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Plan your route so we can show safety insights and raise flags for each area.
+                      </p>
+                      <Button onClick={() => navigate("/itinerary")}>
+                        Create Itinerary
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Quick Actions */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
