@@ -4,6 +4,10 @@ import { InstrumentationProvider } from "@/instrumentation.tsx";
 import AuthPage from "@/pages/Auth.tsx";
 import Dashboard from "@/pages/Dashboard.tsx";
 import TouristRegistration from "@/pages/TouristRegistration.tsx";
+import Emergency from "@/pages/Emergency.tsx";
+import LocationShare from "@/pages/LocationShare.tsx";
+import Itinerary from "@/pages/Itinerary.tsx";
+import NotificationsPage from "@/pages/Notifications.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import { StrictMode, useEffect } from "react";
@@ -51,6 +55,10 @@ createRoot(document.getElementById("root")!).render(
             <Route path="/auth" element={<AuthPage redirectAfterAuth="/dashboard" />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/register" element={<TouristRegistration />} />
+            <Route path="/emergency" element={<Emergency />} />
+            <Route path="/location" element={<LocationShare />} />
+            <Route path="/itinerary" element={<Itinerary />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

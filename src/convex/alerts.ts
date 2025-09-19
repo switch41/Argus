@@ -161,3 +161,27 @@ export const getAlertStats = query({
     };
   },
 });
+
+export const assignAlert = mutation({
+  args: {
+    alertId: v.id("alerts"),
+    officerId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
+      throw new Error("Unauthorized");
+    }
+    const alert = await ctx.db.get(args.alertId);
+    if (!alert) throw new Error("Alert not found");
+
+    // Verify target assignee is an officer
+    const officer = await ctx.db.get(args.officerId);
+    if (!officer || (officer.role !== "police" && officer.role !== "tourism_official" && officer.role !== "admin")) {
+      throw new Error("Assignee must be an officer");
+    }
+
+    await ctx.db.patch(args.alertId, { assignedTo: args.officerId });
+    return { success: true };
+  },
+});
