@@ -296,10 +296,10 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/alerts")}>
+                  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/notifications")}>
                     <CardContent className="pt-6 text-center">
                       <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                      <h3 className="font-semibold">My Alerts</h3>
+                      <h3 className="font-semibold">Notifications</h3>
                       <p className="text-sm text-muted-foreground">{myAlerts?.length || 0} active</p>
                     </CardContent>
                   </Card>
