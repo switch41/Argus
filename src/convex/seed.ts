@@ -30,13 +30,13 @@ export const seedDemo = action({
     ];
 
     // Create sample advisories
-    await ctx.runMutation(api.advisories.create, {
+    await api.advisories.create({
       title: "Weather Alert",
       message: "Heavy rainfall expected in Delhi NCR. Carry umbrellas and avoid low-lying areas.",
       audience: "tourists",
     });
 
-    await ctx.runMutation(api.advisories.create, {
+    await api.advisories.create({
       title: "Security Update",
       message: "Increased security measures at major tourist attractions. Carry valid ID.",
       audience: "all",

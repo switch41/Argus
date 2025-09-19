@@ -1,4 +1,4 @@
-import { action, query } from "./_generated/server";
+import { action, query, api } from "./_generated/server";
 import { getCurrentUser } from "./users";
 
 // Get analytics overview
@@ -56,9 +56,31 @@ export const getOverview = query({
 
 export const exportIncidentsCsv = action({
   args: {},
-  handler: async () => {
-    // Deprecated here. The real implementation moved to src/convex/exports.ts
+  handler: async (ctx) => {
+    // Use public query; unauthorized users will safely receive empty results
+    const allAlerts = await ctx.runQuery(api.alerts.listAllIncidents, { limit: 100 });
+
     const csvHeader = "ID,Type,Severity,Title,Description,Created,Resolved,ResponseTime,Location\n";
-    return csvHeader;
+    const csvRows = allAlerts
+      .map((alert: any) => {
+        const location =
+          "location" in alert && alert.location
+            ? `"${alert.location.latitude},${alert.location.longitude}"`
+            : "";
+        return [
+          alert._id,
+          alert.alertType,
+          alert.severity,
+          `"${alert.title}"`,
+          `"${alert.description || ""}"`,
+          new Date(alert._creationTime).toISOString(),
+          alert.isResolved ? new Date(alert.resolvedAt || 0).toISOString() : "",
+          alert.responseTime || "",
+          location,
+        ].join(",");
+      })
+      .join("\n");
+
+    return csvHeader + csvRows;
   },
 });
