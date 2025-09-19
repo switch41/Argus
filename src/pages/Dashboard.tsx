@@ -62,7 +62,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   
   // Move role flags before queries so we can conditionally call them
-  const isTourist = user?.role === "tourist" || !user?.role;
+  const isTourist = user?.role === "tourist" || user?.role === "user" || !user?.role;
   const isOfficial = user?.role === "police" || user?.role === "tourism_official" || user?.role === "admin";
 
   // Queries (conditionally run official-only queries)
