@@ -1,6 +1,8 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation } from "./_generated/server";
+import { roleValidator } from "./schema";
 
 /**
  * Get the current signed in user. Returns null if the user is not signed in.
@@ -42,5 +44,26 @@ export const listOfficials = query({
     const rows2 = await ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", "tourism_official")).collect();
     const rows3 = await ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", "admin")).collect();
     return [...rows, ...rows2, ...rows3];
+  },
+});
+
+// Add mutation to set role by email (for setup/admin ops)
+export const setRoleForEmail = mutation({
+  args: {
+    email: v.string(),
+    role: roleValidator,
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found for that email");
+    }
+
+    await ctx.db.patch(user._id, { role: args.role });
+    return { success: true, userId: user._id, role: args.role };
   },
 });
