@@ -17,7 +17,7 @@ import {
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -82,7 +82,7 @@ export default function Dashboard() {
   const advisories = useQuery(api.advisories.listForUser);
   const updateCaseStatus = useMutation(api.cases.updateStatus);
   const createAdvisory = useMutation(api.advisories.create);
-  
+  const exportCsv = useAction(api.analytics.exportIncidentsCsv);
   const addCaseNote = useMutation(api.cases.addNote);
   const postCaseMessage = useMutation(api.messages.postToCase);
 
@@ -591,41 +591,16 @@ function IncidentsBoardCard() {
 
 function AnalyticsCard() {
   const analytics = useQuery(api.analytics.getOverview);
-  const incidents = useQuery(api.alerts.listAllIncidents, { limit: 100 });
+  const exportCsv = useAction(api.analytics.exportIncidentsCsv);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     try {
-      if (!incidents?.length) {
-        toast.error("No incidents to export");
-        return;
-      }
-      const csvHeader = "ID,Type,Severity,Title,Description,Created,Resolved,ResponseTime,Location\n";
-      const csvRows = incidents
-        .map((alert: any) => {
-          const location =
-            alert.location
-              ? `"${alert.location.latitude},${alert.location.longitude}"`
-              : "";
-          return [
-            alert._id,
-            alert.alertType,
-            alert.severity,
-            `"${alert.title}"`,
-            `"${alert.description || ""}"`,
-            new Date(alert._creationTime).toISOString(),
-            alert.isResolved ? new Date(alert.resolvedAt || 0).toISOString() : "",
-            alert.responseTime || "",
-            location,
-          ].join(",");
-        })
-        .join("\n");
-
-      const csvData = csvHeader + csvRows;
-      const blob = new Blob([csvData], { type: "text/csv" });
+      const csvData = await exportCsv({});
+      const blob = new Blob([csvData], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = `incidents_${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `incidents_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("CSV exported");
