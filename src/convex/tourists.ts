@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./users";
+import { Id } from "./_generated/dataModel";
 
 // Create tourist profile
 export const createProfile = mutation({
@@ -183,5 +184,84 @@ export const getAllActiveTourists = query({
       .query("touristProfiles")
       .filter((q) => q.eq(q.field("isActive"), true))
       .collect();
+  },
+});
+
+// Create itinerary (minimal: single or multiple stops accepted)
+export const createItinerary = mutation({
+  args: {
+    title: v.string(),
+    description: v.optional(v.string()),
+    plannedRoute: v.array(
+      v.object({
+        latitude: v.number(),
+        longitude: v.number(),
+        locationName: v.string(),
+        plannedArrival: v.number(),
+        plannedDeparture: v.optional(v.number()),
+      })
+    ),
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Not authenticated");
+    const profile = await ctx.db
+      .query("touristProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .first();
+    if (!profile) throw new Error("Tourist profile not found");
+    const id = await ctx.db.insert("itineraries", {
+      touristId: profile._id,
+      title: args.title,
+      description: args.description,
+      plannedRoute: args.plannedRoute,
+      startDate: args.startDate,
+      endDate: args.endDate,
+      isActive: true,
+    });
+    return id;
+  },
+});
+
+// List my itineraries
+export const listMyItineraries = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+    const profile = await ctx.db
+      .query("touristProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .first();
+    if (!profile) return [];
+    return await ctx.db
+      .query("itineraries")
+      .withIndex("by_tourist", (q) => q.eq("touristId", profile._id))
+      .order("desc")
+      .collect();
+  },
+});
+
+// Delete itinerary
+export const deleteItinerary = mutation({
+  args: { itineraryId: v.id("itineraries") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Not authenticated");
+    const itinerary = await ctx.db.get(args.itineraryId);
+    if (!itinerary) throw new Error("Not found");
+    // Ensure ownership
+    const profile = await ctx.db
+      .query("touristProfiles")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .first();
+    if (!profile || itinerary.touristId !== profile._id) throw new Error("Unauthorized");
+    await ctx.db.delete(args.itineraryId);
+    return { success: true };
   },
 });

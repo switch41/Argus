@@ -68,7 +68,7 @@ const schema = defineSchema(
       passportNumber: v.optional(v.string()),
       badgeNumber: v.optional(v.string()), // For police/officials
       department: v.optional(v.string()), // For police/officials
-    }).index("email", ["email"]),
+    }).index("email", ["email"]).index("by_role", ["role"]),
 
     // Tourist Digital ID records
     touristProfiles: defineTable({

@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useMutation } from "convex/react";
+import { toast } from "sonner";
 
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user } = useAuth();
@@ -32,6 +35,8 @@ export default function Dashboard() {
   const allAlerts = useQuery(api.alerts.getAllActiveAlerts, isOfficial ? {} : undefined);
   const alertStats = useQuery(api.alerts.getAlertStats, isOfficial ? {} : undefined);
   const allTourists = useQuery(api.tourists.getAllActiveTourists, isOfficial ? {} : undefined);
+  const assignAlert = useMutation(api.alerts.assignAlert);
+  const officers = useQuery(api.users.listOfficials, isOfficial ? {} : undefined);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -93,13 +98,22 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/profile")}
-              className="font-medium"
-            >
-              Profile
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/notifications")}
+                className="font-medium"
+              >
+                Notifications
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/profile")}
+                className="font-medium"
+              >
+                Profile
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -302,14 +316,67 @@ export default function Dashboard() {
                           <p className="text-xs text-muted-foreground mt-1">
                             {new Date(alert._creationTime).toLocaleString()}
                           </p>
+                          {"location" in alert && alert.location?.latitude && alert.location?.longitude ? (
+                            <a
+                              href={`https://maps.google.com/?q=${alert.location.latitude},${alert.location.longitude}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-blue-600 underline mt-1 inline-block"
+                            >
+                              Open map
+                            </a>
+                          ) : null}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 items-center">
                           <Button size="sm" onClick={() => navigate(`/alert/${alert._id}`)}>
                             View
                           </Button>
-                          <Button size="sm" variant="outline">
-                            Assign
-                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                Assign
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Assign Alert</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-3">
+                                <div className="text-sm text-muted-foreground">
+                                  Select an officer to assign this alert.
+                                </div>
+                                <div className="max-h-64 overflow-auto space-y-2">
+                                  {officers?.length
+                                    ? officers.map((o) => (
+                                        <div
+                                          key={o._id}
+                                          className="p-2 border rounded flex items-center justify-between"
+                                        >
+                                          <div>
+                                            <div className="font-medium">{o.name || o.email || "Officer"}</div>
+                                            <div className="text-xs text-muted-foreground">{o.role}</div>
+                                          </div>
+                                          <Button
+                                            size="sm"
+                                            onClick={async () => {
+                                              try {
+                                                await assignAlert({ alertId: alert._id as any, officerId: o._id as any });
+                                                toast.success("Assigned.");
+                                              } catch (e) {
+                                                console.error(e);
+                                                toast.error("Failed to assign.");
+                                              }
+                                            }}
+                                          >
+                                            Assign
+                                          </Button>
+                                        </div>
+                                      ))
+                                    : <div className="text-sm text-muted-foreground">No officers found.</div>}
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </div>
                     ))}
