@@ -2,28 +2,36 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { Gateway, Wallets, Contract } from "fabric-network";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as yaml from "js-yaml";
 
+// Use 'any' here to avoid importing fabric-network types at module load
 type FabricConnection = {
-  gateway: Gateway;
-  contract: Contract;
+  gateway: any;
+  contract: any;
 };
 
+// Replace loadConnectionProfile to use dynamic imports
 async function loadConnectionProfile(profilePath: string): Promise<any> {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  let yaml: any = null;
+  try {
+    yaml = await import("js-yaml");
+  } catch {
+    // yaml optional if not using .yaml
+  }
+
   if (!fs.existsSync(profilePath)) {
     throw new Error(`CONNECTION_PROFILE_PATH not found at: ${profilePath}`);
   }
   const raw = fs.readFileSync(profilePath, "utf8");
   const ext = path.extname(profilePath).toLowerCase();
-  if (ext === ".yaml" || ext === ".yml") {
+  if ((ext === ".yaml" || ext === ".yml") && yaml) {
     return yaml.load(raw);
   }
   return JSON.parse(raw);
 }
 
+// Replace connectToFabric to load fabric-network dynamically inside the action runtime
 async function connectToFabric(): Promise<FabricConnection> {
   const connectionProfilePath = process.env.CONNECTION_PROFILE_PATH;
   const walletPath = process.env.WALLET_PATH;
@@ -43,6 +51,10 @@ async function connectToFabric(): Promise<FabricConnection> {
   const asLocalhost = (process.env.DISCOVERY_AS_LOCALHOST || "true").toLowerCase() === "true";
 
   const ccp = await loadConnectionProfile(connectionProfilePath);
+
+  // Dynamic import to avoid build-time analysis of fabric dependencies
+  const fabric = await import("fabric-network");
+  const { Gateway, Wallets } = fabric as any;
 
   const wallet = await Wallets.newFileSystemWallet(walletPath);
   const identity = await wallet.get(identityLabel);
@@ -65,6 +77,7 @@ async function connectToFabric(): Promise<FabricConnection> {
   return { gateway, contract };
 }
 
+// Keep same close helper
 async function close(conn?: FabricConnection) {
   try {
     if (conn?.gateway) {
