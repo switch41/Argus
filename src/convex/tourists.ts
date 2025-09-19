@@ -265,3 +265,132 @@ export const deleteItinerary = mutation({
     return { success: true };
   },
 });
+
+// List active profiles for officials (limited public fields)
+export const listActiveProfilesForOfficials = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
+      return [];
+    }
+
+    const profiles = await ctx.db
+      .query("touristProfiles")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    // Return limited public fields with masked passport
+    return profiles.map(profile => ({
+      _id: profile._id,
+      nationality: profile.nationality,
+      passportNumber: profile.passportNumber.slice(0, 3) + "****" + profile.passportNumber.slice(-2),
+      isActive: profile.isActive,
+      expiryDate: profile.expiryDate,
+      _creationTime: profile._creationTime,
+    }));
+  },
+});
+
+// Get movement and alerts summary for a specific tourist
+export const getMovementAndAlertsSummary = query({
+  args: { profileId: v.id("touristProfiles") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return null;
+
+    const profile = await ctx.db.get(args.profileId);
+    if (!profile) return null;
+
+    // Check authorization: officials can view any, tourists only their own
+    const isOfficial = user.role === "police" || user.role === "tourism_official" || user.role === "admin";
+    if (!isOfficial && profile.userId !== user._id) {
+      return null;
+    }
+
+    // Get last 10 locations
+    const locations = await ctx.db
+      .query("locationHistory")
+      .withIndex("by_tourist", (q) => q.eq("touristId", args.profileId))
+      .order("desc")
+      .take(10);
+
+    // Get alerts for this tourist
+    const alerts = await ctx.db
+      .query("alerts")
+      .withIndex("by_tourist", (q) => q.eq("touristId", args.profileId))
+      .order("desc")
+      .take(10);
+
+    return {
+      profile: {
+        _id: profile._id,
+        nationality: profile.nationality,
+        isActive: profile.isActive,
+        expiryDate: profile.expiryDate,
+      },
+      locations,
+      alerts,
+    };
+  },
+});
+
+// Verify digital ID by hash
+export const verifyDigitalId = query({
+  args: { digitalIdHash: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
+      .query("touristProfiles")
+      .filter((q) => q.eq(q.field("digitalIdHash"), args.digitalIdHash))
+      .first();
+
+    if (!profile) return null;
+
+    const isValid = profile.isActive && profile.expiryDate > Date.now();
+
+    return {
+      _id: profile._id,
+      nationality: profile.nationality,
+      isActive: profile.isActive,
+      expiryDate: profile.expiryDate,
+      isValid,
+      validityPeriod: {
+        start: profile._creationTime,
+        end: profile.expiryDate,
+      },
+    };
+  },
+});
+
+// List recent locations aggregated for heatmap
+export const listRecentLocationsAggregated = query({
+  args: { minutesBack: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || (user.role !== "police" && user.role !== "tourism_official" && user.role !== "admin")) {
+      return [];
+    }
+
+    const cutoff = Date.now() - (args.minutesBack || 60) * 60 * 1000;
+    
+    const recentLocations = await ctx.db
+      .query("locationHistory")
+      .withIndex("by_timestamp")
+      .filter((q) => q.gte(q.field("timestamp"), cutoff))
+      .collect();
+
+    // Aggregate by rounding to 3 decimals
+    const clusters: Record<string, number> = {};
+    recentLocations.forEach(loc => {
+      const lat = Math.round(loc.latitude * 1000) / 1000;
+      const lon = Math.round(loc.longitude * 1000) / 1000;
+      const key = `${lat},${lon}`;
+      clusters[key] = (clusters[key] || 0) + 1;
+    });
+
+    return Object.entries(clusters).map(([coords, count]) => {
+      const [lat, lon] = coords.split(',').map(Number);
+      return { lat, lon, count };
+    });
+  },
+});

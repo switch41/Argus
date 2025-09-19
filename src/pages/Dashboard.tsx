@@ -19,6 +19,43 @@ import { useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useMutation } from "convex/react";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Download, Map, MessageSquare, Radio, TrendingUp } from "lucide-react";
+import { useState } from "react";
+
+function AdvisoryBanners() {
+  const advisories = useQuery(api.advisories.listForUser);
+  const [dismissed, setDismissed] = useState<string[]>([]);
+
+  if (!advisories?.length) return null;
+
+  const activeBanners = advisories.filter((advisory: any) => !dismissed.includes(advisory._id));
+
+  if (!activeBanners.length) return null;
+
+  return (
+    <div className="space-y-2">
+      {activeBanners.map((advisory: any) => (
+        <div key={advisory._id} className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+          <div>
+            <div className="font-medium text-blue-900">{advisory.title}</div>
+            <div className="text-sm text-blue-700">{advisory.message}</div>
+          </div>
+          <Button 
+            size="sm" 
+            variant="ghost"
+            onClick={() => setDismissed(prev => [...prev, advisory._id])}
+          >
+            ×
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user } = useAuth();
@@ -32,11 +69,22 @@ export default function Dashboard() {
   const touristProfile = useQuery(api.tourists.getCurrentProfile);
   const safetyScore = useQuery(api.tourists.getSafetyScore);
   const myAlerts = useQuery(api.alerts.getMyAlerts);
-  const allAlerts = useQuery(api.alerts.getAllActiveAlerts, isOfficial ? {} : undefined);
-  const alertStats = useQuery(api.alerts.getAlertStats, isOfficial ? {} : undefined);
-  const allTourists = useQuery(api.tourists.getAllActiveTourists, isOfficial ? {} : undefined);
+  const allAlerts = useQuery(api.alerts.getAllActiveAlerts, isOfficial ? {} : "skip");
+  const alertStats = useQuery(api.alerts.getAlertStats, isOfficial ? {} : "skip");
+  const allTourists = useQuery(api.tourists.getAllActiveTourists, isOfficial ? {} : "skip");
   const assignAlert = useMutation(api.alerts.assignAlert);
-  const officers = useQuery(api.users.listOfficials, isOfficial ? {} : undefined);
+  const officers = useQuery(api.users.listOfficials, isOfficial ? {} : "skip");
+  const heatmapData = useQuery(api.tourists.listRecentLocationsAggregated, isOfficial ? { minutesBack: 60 } : "skip");
+  const iotSignals = useQuery(api.devices.listRecentSignals, isOfficial ? { limit: 5 } : "skip");
+  const openCases = useQuery(api.cases.getByStatus, isOfficial ? { status: "open" } : "skip");
+  const assignedCases = useQuery(api.cases.getByStatus, isOfficial ? { status: "assigned" } : "skip");
+  const analytics = useQuery(api.analytics.getOverview, isOfficial ? {} : "skip");
+  const advisories = useQuery(api.advisories.listForUser);
+  const updateCaseStatus = useMutation(api.cases.updateStatus);
+  const createAdvisory = useMutation(api.advisories.create);
+  
+  const addCaseNote = useMutation(api.cases.addNote);
+  const postCaseMessage = useMutation(api.messages.postToCase);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -126,6 +174,9 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-8"
           >
+            {/* Advisory Banners */}
+            <AdvisoryBanners />
+
             {!touristProfile ? (
               <Card className="border-2 border-dashed">
                 <CardContent className="pt-6 text-center">
@@ -207,7 +258,7 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {myAlerts.slice(0, 3).map((alert) => (
+                        {myAlerts.slice(0, 3).map((alert: any) => (
                           <div key={alert._id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                             <div>
                               <div className="font-medium">{alert.title}</div>
@@ -287,6 +338,28 @@ export default function Dashboard() {
               </Card>
             </div>
 
+            {/* New compact sections */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Heatmap */}
+              <HeatmapCard />
+              
+              {/* IoT Signals */}
+              <IoTSignalsCard />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Incidents Board */}
+              <IncidentsBoardCard />
+              
+              {/* Analytics */}
+              <AnalyticsCard />
+            </div>
+
+            {/* Advisory Creation */}
+            <div className="flex justify-end">
+              <AdvisoryDialog />
+            </div>
+
             {/* Active Alerts */}
             <Card>
               <CardHeader>
@@ -298,7 +371,7 @@ export default function Dashboard() {
               <CardContent>
                 {allAlerts && allAlerts.length > 0 ? (
                   <div className="space-y-4">
-                    {allAlerts.slice(0, 5).map((alert) => (
+                    {allAlerts.slice(0, 5).map((alert: any) => (
                       <div key={alert._id} className="flex items-center justify-between p-4 border rounded-lg">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -347,7 +420,7 @@ export default function Dashboard() {
                                 </div>
                                 <div className="max-h-64 overflow-auto space-y-2">
                                   {officers?.length
-                                    ? officers.map((o) => (
+                                    ? officers.map((o: any) => (
                                         <div
                                           key={o._id}
                                           className="p-2 border rounded flex items-center justify-between"
@@ -393,5 +466,352 @@ export default function Dashboard() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+// New compact components
+function HeatmapCard() {
+  const heatmapData = useQuery(api.tourists.listRecentLocationsAggregated, { minutesBack: 60 });
+  
+  const mapUrl = heatmapData?.length 
+    ? `https://maps.google.com/maps?${heatmapData.map((point: any, i: number) => `markers=${point.lat},${point.lon}`).join('&')}&z=12&output=embed`
+    : null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Map className="h-5 w-5" />
+          Tourist Heatmap
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {mapUrl ? (
+          <iframe
+            title="heatmap"
+            className="w-full h-48 rounded border"
+            loading="lazy"
+            src={mapUrl}
+          />
+        ) : (
+          <div className="h-48 flex items-center justify-center text-muted-foreground">
+            No recent location data
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function IoTSignalsCard() {
+  const signals = useQuery(api.devices.listRecentSignals, { limit: 5 });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Radio className="h-5 w-5" />
+          IoT Signals
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {signals?.length ? (
+          <div className="space-y-2">
+            {signals.map((signal: any) => (
+              <div key={signal._id} className="flex items-center justify-between p-2 bg-muted rounded">
+                <div>
+                  <div className="text-sm font-medium">{signal.type.toUpperCase()}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(signal.timestamp).toLocaleString()}
+                  </div>
+                </div>
+                <div className={`px-2 py-1 rounded text-xs ${
+                  signal.type === "sos" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
+                }`}>
+                  {signal.type}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">No recent signals</div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function IncidentsBoardCard() {
+  const openCases = useQuery(api.cases.getByStatus, { status: "open" });
+  const assignedCases = useQuery(api.cases.getByStatus, { status: "assigned" });
+  const updateStatus = useMutation(api.cases.updateStatus);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Activity className="h-5 w-5" />
+          Incidents Board
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold">{openCases?.length || 0}</div>
+            <div className="text-sm text-muted-foreground">Open</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold">{assignedCases?.length || 0}</div>
+            <div className="text-sm text-muted-foreground">Assigned</div>
+          </div>
+        </div>
+        
+        {openCases?.slice(0, 3).map((case_: any) => (
+          <div key={case_._id} className="flex items-center justify-between p-2 border rounded mb-2">
+            <div>
+              <div className="text-sm font-medium">Case #{case_._id.slice(-6)}</div>
+              <div className="text-xs text-muted-foreground">{case_.priority} priority</div>
+            </div>
+            <div className="flex gap-1">
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => updateStatus({ caseId: case_._id as any, status: "assigned" })}
+              >
+                Assign
+              </Button>
+              <CaseDetailDialog caseId={case_._id} />
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AnalyticsCard() {
+  const analytics = useQuery(api.analytics.getOverview);
+  const incidents = useQuery(api.alerts.listAllIncidents, { limit: 100 });
+
+  const handleExport = () => {
+    try {
+      if (!incidents?.length) {
+        toast.error("No incidents to export");
+        return;
+      }
+      const csvHeader = "ID,Type,Severity,Title,Description,Created,Resolved,ResponseTime,Location\n";
+      const csvRows = incidents
+        .map((alert: any) => {
+          const location =
+            alert.location
+              ? `"${alert.location.latitude},${alert.location.longitude}"`
+              : "";
+          return [
+            alert._id,
+            alert.alertType,
+            alert.severity,
+            `"${alert.title}"`,
+            `"${alert.description || ""}"`,
+            new Date(alert._creationTime).toISOString(),
+            alert.isResolved ? new Date(alert.resolvedAt || 0).toISOString() : "",
+            alert.responseTime || "",
+            location,
+          ].join(",");
+        })
+        .join("\n");
+
+      const csvData = csvHeader + csvRows;
+      const blob = new Blob([csvData], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `incidents_${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("CSV exported");
+    } catch (e) {
+      toast.error("Export failed");
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Analytics
+          </div>
+          <Button size="sm" variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-1" />
+            Export CSV
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <span className="text-sm">Total Tourists:</span>
+            <span className="font-medium">{analytics?.totalTourists || 0}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm">Total Alerts:</span>
+            <span className="font-medium">{analytics?.totalAlerts || 0}</span>
+          </div>
+          {analytics?.topRiskAreas?.length ? (
+            <div>
+              <div className="text-sm font-medium mt-3 mb-1">Top Risk Areas:</div>
+              {analytics.topRiskAreas.slice(0, 3).map((area: any, i: number) => (
+                <div key={i} className="text-xs text-muted-foreground">
+                  {area.coords} ({area.count} incidents)
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AdvisoryDialog() {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    message: "",
+    audience: "tourists" as "all" | "tourists" | "officials",
+  });
+  const createAdvisory = useMutation(api.advisories.create);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createAdvisory(form);
+      toast.success("Advisory created");
+      setOpen(false);
+      setForm({ title: "", message: "", audience: "tourists" });
+    } catch (e) {
+      toast.error("Failed to create advisory");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>Create Advisory</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New Travel Advisory</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label>Title</Label>
+            <Input 
+              value={form.title} 
+              onChange={(e) => setForm(p => ({ ...p, title: e.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <Label>Message</Label>
+            <Textarea 
+              value={form.message} 
+              onChange={(e) => setForm(p => ({ ...p, message: e.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <Label>Audience</Label>
+            <Select value={form.audience} onValueChange={(v: any) => setForm(p => ({ ...p, audience: v }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tourists">Tourists</SelectItem>
+                <SelectItem value="officials">Officials</SelectItem>
+                <SelectItem value="all">All Users</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="submit">Create Advisory</Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CaseDetailDialog({ caseId }: { caseId: string }) {
+  const [open, setOpen] = useState(false);
+  const case_ = useQuery(api.cases.get, { caseId: caseId as any });
+  const messages = useQuery(api.messages.listByCase, { caseId: caseId as any });
+  const [note, setNote] = useState("");
+  const addNote = useMutation(api.cases.addNote);
+  const postMessage = useMutation(api.messages.postToCase);
+
+  const handleAddNote = async () => {
+    if (!note.trim()) return;
+    try {
+      await addNote({ caseId: caseId as any, note });
+      setNote("");
+      toast.success("Note added");
+    } catch (e) {
+      toast.error("Failed to add note");
+    }
+  };
+
+  const handlePostMessage = async () => {
+    if (!note.trim()) return;
+    try {
+      await postMessage({ caseId: caseId as any, body: note });
+      setNote("");
+      toast.success("Message sent");
+    } catch (e) {
+      toast.error("Failed to send message");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <MessageSquare className="h-3 w-3" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Case #{caseId.slice(-6)}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 max-h-96 overflow-auto">
+          {case_?.timeline?.map((entry: any, i: number) => (
+            <div key={i} className="p-2 bg-muted rounded">
+              <div className="text-sm">{entry.note}</div>
+              <div className="text-xs text-muted-foreground">
+                {new Date(entry.t).toLocaleString()}
+              </div>
+            </div>
+          ))}
+          
+          {messages?.map((msg: any) => (
+            <div key={msg._id} className="p-2 border rounded">
+              <div className="text-sm">{msg.body}</div>
+              <div className="text-xs text-muted-foreground">
+                {new Date(msg.t).toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="flex gap-2">
+          <Input 
+            value={note} 
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add note or message..."
+          />
+          <Button onClick={handleAddNote}>Note</Button>
+          <Button onClick={handlePostMessage}>Message</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

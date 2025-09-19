@@ -205,7 +205,7 @@ export default function Itinerary() {
             ) : myItineraries.length === 0 ? (
               <div className="text-sm text-muted-foreground">No itineraries yet.</div>
             ) : (
-              myItineraries.map((it) => (
+              myItineraries.map((it: any) => (
                 <div key={it._id} className="p-4 border rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">{it.title}</div>
