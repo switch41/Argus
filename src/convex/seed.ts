@@ -5,29 +5,7 @@ export const seedDemo = action({
   args: {},
   handler: async (ctx) => {
     // Create sample alerts with varied severities
-    const sampleAlerts = [
-      {
-        alertType: "panic_button" as const,
-        severity: "critical" as const,
-        title: "Tourist Emergency - Panic Button",
-        description: "Tourist activated panic button near Red Fort area",
-        location: { latitude: 28.6562, longitude: 77.2410 },
-      },
-      {
-        alertType: "geo_fence_violation" as const,
-        severity: "high" as const,
-        title: "Restricted Area Entry",
-        description: "Tourist entered restricted military zone",
-        location: { latitude: 28.6139, longitude: 77.2090 },
-      },
-      {
-        alertType: "inactivity" as const,
-        severity: "medium" as const,
-        title: "Prolonged Inactivity",
-        description: "No movement detected for 4 hours",
-        location: { latitude: 28.5355, longitude: 77.3910 },
-      },
-    ];
+    // removed unused sampleAlerts definition
 
     // Create sample advisories
     await ctx.runMutation(api.advisories.create, {
