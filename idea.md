@@ -129,6 +129,7 @@
 - Geo-fenced Safe Zones & Panic Routing ✔  
 - Fraud/Scam Prevention Alerts ✔  
 - IoT Hook (wearables) ✔ (future-ready)  
-- Post-Incident NPS Feedback ✔  
+- Post-Incident NPS Feedback ✔
+- E-Fir Automation ( forgot about it )
 
 👉 Yes — every unique feature we brainstormed is in. 🎯
