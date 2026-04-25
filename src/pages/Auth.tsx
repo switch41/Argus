@@ -16,7 +16,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, Loader2, Mail, UserX } from "lucide-react";
+import { ArrowRight, Loader2, Mail, Shield, UserX } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -157,189 +157,188 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-
-      
+    <div className="min-h-screen bg-background font-sans flex flex-col">
       {/* Auth Content */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="flex items-center justify-center h-full flex-col">
-        <Card className="min-w-[350px] pb-0 border shadow-md">
-          {step === "signIn" ? (
-            <>
-              <CardHeader className="text-center">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 flex justify-center">
-                    <img
-                      src="./logo.svg"
-                      alt="Lock Icon"
-                      width={64}
-                      height={64}
-                      className="rounded-lg mb-4 mt-4 cursor-pointer"
-                      onClick={() => navigate("/")}
-                    />
-                  </div>
-                  <div className="w-32 mt-2">
+      <div className="flex-1 flex items-center justify-center p-6 bg-[radial-gradient(circle_at_top_right,var(--secondary)_0%,transparent_50%)] opacity-20 absolute inset-0 -z-10" />
+
+      <div className="flex-1 flex items-center justify-center p-6 relative z-10">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center space-y-4">
+            <div
+              className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-lg shadow-lg cursor-pointer mx-auto transition-transform hover:scale-105"
+              onClick={() => navigate("/")}
+            >
+              <Shield className="h-8 w-8 text-primary-foreground" />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-3xl font-display font-bold tracking-tight text-primary">SafeTravel ID</h1>
+              <p className="text-muted-foreground font-medium">Secure Portal Access</p>
+            </div>
+          </div>
+
+          <Card className="border border-border bg-card shadow-xl overflow-hidden rounded-xl">
+            <div className="p-1 bg-gradient-to-r from-primary via-secondary to-accent opacity-20" />
+
+            {step === "signIn" ? (
+              <>
+                <CardHeader className="space-y-1">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="label-caps !text-[10px] text-secondary">Verified Network</div>
                     <Select value={locale} onValueChange={(v) => setLocale(v as any)}>
-                      <SelectTrigger className="h-8 text-xs">
+                      <SelectTrigger className="h-8 w-24 text-[10px] font-bold uppercase tracking-wider bg-muted/50 border-none">
                         <SelectValue placeholder={t("language")} />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Español</SelectItem>
+                      <SelectContent className="font-sans">
+                        <SelectItem value="en">ENGLISH</SelectItem>
+                        <SelectItem value="es">ESPAÑOL</SelectItem>
                         <SelectItem value="hi">हिंदी</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-                <CardTitle className="text-xl">{t("getStarted")}</CardTitle>
-                <CardDescription>{t("enterEmail")}</CardDescription>
-              </CardHeader>
-              <form onSubmit={handleEmailSubmit}>
-                <CardContent>
-                  
-                  <div className="relative flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        name="email"
-                        placeholder={t("emailPlaceholder")}
-                        type="email"
-                        className="pl-9"
-                        disabled={isLoading}
-                        required
-                      />
+                  <CardTitle className="text-2xl font-display">{t("getStarted")}</CardTitle>
+                  <CardDescription className="text-muted-foreground font-medium">{t("enterEmail")}</CardDescription>
+                </CardHeader>
+                <form onSubmit={handleEmailSubmit}>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <div className="label-caps !text-[11px] text-primary">Email Identification</div>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                          name="email"
+                          placeholder={t("emailPlaceholder")}
+                          type="email"
+                          className="pl-10 h-12 border-border focus:ring-secondary transition-all"
+                          disabled={isLoading}
+                          required
+                        />
+                      </div>
                     </div>
+
                     <Button
                       type="submit"
-                      variant="outline"
-                      size="icon"
+                      className="w-full h-12 text-lg font-bold bg-primary hover:bg-primary/90 glow-primary"
                       disabled={isLoading}
                     >
                       {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-5 w-5 animate-spin" />
                       ) : (
-                        <ArrowRight className="h-4 w-4" />
+                        <>
+                          Continue
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </>
                       )}
                     </Button>
-                  </div>
-                  {error && (
-                    <p className="mt-2 text-sm text-red-500">{error}</p>
-                  )}
-                  
-                  <div className="mt-4">
-                    <div className="relative">
+
+                    {error && (
+                      <p className="text-sm font-medium text-destructive text-center bg-destructive/10 p-2 rounded border border-destructive/20">{error}</p>
+                    )}
+
+                    <div className="relative py-2">
                       <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
+                        <span className="w-full border-t border-border" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
+                        <span className="bg-card px-2 text-muted-foreground font-bold tracking-widest">
                           {t("or")}
                         </span>
                       </div>
                     </div>
-                    
+
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full mt-4"
+                      className="w-full h-12 font-bold border-2"
                       onClick={handleGuestLogin}
                       disabled={isLoading}
                     >
-                      <UserX className="mr-2 h-4 w-4" />
+                      <UserX className="mr-2 h-5 w-5" />
                       {t("continueGuest")}
                     </Button>
+                  </CardContent>
+                </form>
+              </>
+            ) : (
+              <>
+                <CardHeader className="text-center space-y-2">
+                  <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Mail className="h-6 w-6 text-secondary" />
                   </div>
-                </CardContent>
-              </form>
-            </>
-          ) : (
-            <>
-              <CardHeader className="text-center mt-4">
-                <CardTitle>{t("checkEmail")}</CardTitle>
-                <CardDescription>
-                  {t("sentCodeTo", { email: step.email })}
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={handleOtpSubmit}>
-                <CardContent className="pb-4">
-                  <input type="hidden" name="email" value={step.email} />
-                  <input type="hidden" name="code" value={otp} />
+                  <CardTitle className="text-2xl font-display">{t("checkEmail")}</CardTitle>
+                  <CardDescription className="font-medium">
+                    {t("sentCodeTo", { email: step.email })}
+                  </CardDescription>
+                </CardHeader>
+                <form onSubmit={handleOtpSubmit}>
+                  <CardContent className="space-y-6">
+                    <input type="hidden" name="email" value={step.email} />
+                    <input type="hidden" name="code" value={otp} />
 
-                  <div className="flex justify-center">
-                    <InputOTP
-                      value={otp}
-                      onChange={setOtp}
-                      maxLength={6}
-                      disabled={isLoading}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && otp.length === 6 && !isLoading) {
-                          // Find the closest form and submit it
-                          const form = (e.target as HTMLElement).closest("form");
-                          if (form) {
-                            form.requestSubmit();
-                          }
-                        }
-                      }}
-                    >
-                      <InputOTPGroup>
-                        {Array.from({ length: 6 }).map((_, index) => (
-                          <InputOTPSlot key={index} index={index} />
-                        ))}
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  {error && (
-                    <p className="mt-2 text-sm text-red-500 text-center">
-                      {error}
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground text-center mt-4">
-                    {t("sentCodeTo", { email: step.email })}{" "}
-                    <Button
-                      variant="link"
-                      className="p-0 h-auto"
-                      onClick={() => setStep("signIn")}
-                    >
-                      {t("tryAgain")}
-                    </Button>
-                  </p>
-                </CardContent>
-                <CardFooter className="flex-col gap-2">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isLoading || otp.length !== 6}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {t("verifying")}
-                      </>
-                    ) : (
-                      <>
-                        {t("verifyCode")}
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </>
+                    <div className="flex justify-center py-4">
+                      <InputOTP
+                        value={otp}
+                        onChange={setOtp}
+                        maxLength={6}
+                        disabled={isLoading}
+                        className="gap-2"
+                      >
+                        <InputOTPGroup className="gap-2">
+                          {[0, 1, 2, 3, 4, 5].map((idx) => (
+                            <InputOTPSlot
+                              key={idx}
+                              index={idx}
+                              className="w-12 h-14 text-xl font-bold border-2 rounded-lg bg-muted/50 focus:border-secondary transition-all"
+                            />
+                          ))}
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </div>
+
+                    {error && (
+                      <p className="text-sm font-medium text-destructive text-center bg-destructive/10 p-2 rounded border border-destructive/20">
+                        {error}
+                      </p>
                     )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setStep("signIn")}
-                    disabled={isLoading}
-                    className="w-full"
-                  >
-                    {t("useDifferentEmail")}
-                  </Button>
-                </CardFooter>
-              </form>
-            </>
-          )}
 
-            <div className="py-4 px-6 text-xs text-center text-muted-foreground bg-muted border-t rounded-b-lg">
-              {t("securedByConvex")}
+                    <Button
+                      type="submit"
+                      className="w-full h-12 text-lg font-bold bg-primary hover:bg-primary/90 glow-primary"
+                      disabled={isLoading || otp.length !== 6}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          {t("verifying")}
+                        </>
+                      ) : (
+                        <>
+                          {t("verifyCode")}
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </>
+                      )}
+                    </Button>
+
+                    <div className="text-center">
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="text-sm font-bold text-secondary hover:text-secondary/80 p-0 h-auto"
+                        onClick={() => setStep("signIn")}
+                        disabled={isLoading}
+                      >
+                        {t("useDifferentEmail")}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </form>
+              </>
+            )}
+
+            <div className="py-4 px-6 bg-muted/30 border-t border-border flex items-center justify-center gap-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <span className="label-caps !text-[9px] text-muted-foreground tracking-[0.2em]">{t("securedByConvex")}</span>
             </div>
-        </Card>
+          </Card>
         </div>
       </div>
     </div>

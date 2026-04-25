@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "convex/react";
-import { AlertTriangle, MapPin, Loader2 } from "lucide-react";
+import { AlertTriangle, MapPin, Loader2, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -61,79 +61,140 @@ export default function Emergency() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-white">
-        <div className="max-w-3xl mx-auto px-8 py-6 flex items-center justify-between">
+    <div className="min-h-screen bg-background font-sans flex flex-col">
+      <header className="border-b border-border bg-accent text-white sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="h-6 w-6 text-red-600" />
-            <h1 className="text-xl font-semibold tracking-tight">Emergency</h1>
+            <div className="bg-white p-1 rounded">
+              <AlertTriangle className="h-6 w-6 text-accent" />
+            </div>
+            <h1 className="text-xl font-display font-bold tracking-widest uppercase">Emergency System</h1>
           </div>
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
-            Back
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/dashboard")}
+            className="text-white hover:bg-white/10 font-bold label-caps text-[10px]"
+          >
+            Cancel Signal
           </Button>
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-8 py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>PANIC Button</CardTitle>
+      <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-12 space-y-8 animate-in fade-in slide-in-from-bottom-4">
+        <div className="space-y-2">
+          <div className="label-caps !text-[11px] text-accent font-black tracking-[0.3em]">SOS BROADCAST SECTION</div>
+          <h2 className="text-4xl font-display font-bold text-primary tracking-tighter">Request Immediate Assistance</h2>
+          <p className="text-muted-foreground font-medium max-w-2xl">
+            This signal will broadcast your biometric profile, real-time GPS coordinates, and travel history to the nearest Safety Command Center and local emergency services.
+          </p>
+        </div>
+
+        <Card className="border border-border bg-card shadow-2xl overflow-hidden rounded-xl">
+          <div className="p-1 bg-accent" />
+          <CardHeader className="bg-accent/5 pb-6">
+            <CardTitle className="font-display text-2xl flex items-center gap-2">
+              <MapPin className="h-6 w-6 text-accent" />
+              Geolocation Lock
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="text-sm text-muted-foreground">
-              Share your current location and notify authorities immediately.
-            </div>
+          <CardContent className="space-y-8 pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <div className="label-caps !text-[10px] text-primary">Incident Intelligence</div>
+                  <Textarea
+                    value={desc}
+                    onChange={(e) => setDesc(e.target.value)}
+                    placeholder="Briefly describe the situation (e.g., medical, theft, lost)..."
+                    className="h-32 border-2 focus:ring-accent bg-muted/50 font-medium"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Additional details (optional)</label>
-              <Textarea
-                value={desc}
-                onChange={(e) => setDesc(e.target.value)}
-                placeholder="Describe the emergency briefly..."
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="h-4 w-4" />
-                <span>
-                  {coords
-                    ? `Location acquired: ${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}`
-                    : "Acquiring location..."}
-                </span>
+                <div className="p-4 bg-muted border border-border rounded-lg space-y-3">
+                  <div className="label-caps !text-[9px] text-muted-foreground">Broadcast Status</div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold font-display uppercase tracking-widest text-primary">GPS COORDINATES</span>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${coords ? "bg-emerald-500 text-white" : "bg-red-500 text-white animate-pulse"}`}>
+                      {coords ? "LOCKED" : "ACQUIRING..."}
+                    </span>
+                  </div>
+                  <div className="mono-data text-xl font-bold text-primary">
+                    {coords ? `${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}` : "---.------, ---.------"}
+                  </div>
+                </div>
               </div>
-              {coords && (
-                <iframe
-                  title="map"
-                  className="w-full h-64 rounded border"
-                  loading="lazy"
-                  src={`https://maps.google.com/maps?q=${coords.lat},${coords.lon}&z=15&output=embed`}
-                />
-              )}
+
+              <div className="space-y-2">
+                <div className="label-caps !text-[10px] text-primary">Tactical View</div>
+                <div className="relative group overflow-hidden rounded-lg border-2 border-border h-full min-h-[250px] bg-muted flex items-center justify-center">
+                  {coords ? (
+                    <iframe
+                      title="map"
+                      className="absolute inset-0 w-full h-full grayscale-[0.2] contrast-[1.1]"
+                      loading="lazy"
+                      src={`https://maps.google.com/maps?q=${coords.lat},${coords.lon}&z=16&output=embed`}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-3 text-muted-foreground animate-pulse">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                      <span className="label-caps text-[10px]">Triangulating...</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <Button
-              size="lg"
-              variant="destructive"
-              onClick={onPanic}
-              className="w-full bg-red-600 hover:bg-red-700"
-              disabled={isSending}
-            >
-              {isSending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Send PANIC Alert
-                </>
-              )}
-            </Button>
+            <div className="pt-6 border-t border-border">
+              <Button
+                size="lg"
+                variant="destructive"
+                onClick={onPanic}
+                className="w-full h-20 text-2xl font-black tracking-[.25em] bg-accent hover:bg-accent/90 glow-accent transition-all hover:scale-[1.01]"
+                disabled={isSending || !coords}
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="mr-3 h-8 w-8 animate-spin" />
+                    BROADCASTING...
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-8 w-8 mr-3" />
+                    TRIGGER PANIC SIGNAL
+                  </>
+                )}
+              </Button>
+              <p className="text-center text-[10px] label-caps text-muted-foreground mt-4 tracking-widest italic">
+                WARNING: UNAUTHORIZED USE IS A SYSTEM VIOLATION
+              </p>
+            </div>
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border border-border bg-muted/20">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="w-10 h-10 bg-accent/10 rounded flex items-center justify-center">
+                <Shield className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <div className="font-bold text-sm">Command Center</div>
+                <div className="text-[10px] text-muted-foreground label-caps">Automatic Dispatch</div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border border-border bg-muted/20">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="w-10 h-10 bg-primary/10 rounded flex items-center justify-center">
+                <MapPin className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="font-bold text-sm">Geofence Registry</div>
+                <div className="text-[10px] text-muted-foreground label-caps">Local Police Alerted</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

@@ -4,17 +4,18 @@ import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { motion } from "framer-motion";
-import { 
-  Shield, 
-  MapPin, 
-  AlertTriangle, 
-  Users, 
+import {
+  Shield,
+  MapPin,
+  AlertTriangle,
+  Users,
   Clock,
   CheckCircle,
   Activity,
   Globe,
   Wifi,
-  WifiOff
+  WifiOff,
+  ArrowRight
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useEffect, useCallback } from "react";
@@ -38,7 +39,7 @@ import AdvisoryDialog from "@/components/dashboard/AdvisoryDialog";
 export default function Dashboard() {
   const { isLoading, isAuthenticated, user, signOut } = useAuth();
   const navigate = useNavigate();
-  
+
   // Move role flags before queries so we can conditionally call them
   // Layer-based role detection
   const isTourist = user?.role === "tourist" || user?.role === "user" || !user?.role;
@@ -58,9 +59,9 @@ export default function Dashboard() {
   const assignAlert = useMutation(api.alerts.assignAlert);
   const officers = useQuery(api.users.listOfficials, isOfficial ? {} : "skip");
   /* removed unused queries: heatmapData, iotSignals, openCases, assignedCases, analytics, advisories */
-  
+
   /* removed unused mutations: updateCaseStatus, createAdvisory */
-  
+
   /* removed unused mutations: addCaseNote, postCaseMessage */
   const triggerPanic = useMutation(api.alerts.triggerPanicAlert);
 
@@ -79,7 +80,7 @@ export default function Dashboard() {
   const onPanicClick = async () => {
     if (!isOnline) {
       OfflineManager.addToQueue("alerts.triggerPanicAlert", {
-        latitude: 0, 
+        latitude: 0,
         longitude: 0,
         description: "Emergency SOS (Offline)",
       });
@@ -127,48 +128,50 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background font-sans">
       {/* Header */}
-      <header className="border-b bg-white">
-        <div className="max-w-7xl mx-auto px-8 py-6">
+      <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <img
-                src="/logo.svg"
-                alt="Tourist Safety"
-                className="h-8 w-8 cursor-pointer"
+              <div
+                className="w-10 h-10 bg-primary rounded flex items-center justify-center cursor-pointer hover:scale-105 transition-transform"
                 onClick={() => navigate("/")}
-              />
+              >
+                <Shield className="h-6 w-6 text-primary-foreground" />
+              </div>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight">
-                  {isTourist ? "Tourist Dashboard" : isAdmin ? "System Governance Center" : "Safety Control Center"}
+                <h1 className="text-xl font-display font-bold tracking-tight text-primary">
+                  {isTourist ? "Tourist Portal" : isAdmin ? "System Governance" : "Safety Command"}
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  Welcome back, {user.name || user.email}
-                </p>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${isOnline ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`} />
+                  <p className="text-[10px] label-caps text-muted-foreground">
+                    Active Session: {user.name || user.email}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="mr-4 flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
-                {isOnline ? <Wifi className="h-4 w-4 text-emerald-600" /> : <WifiOff className="h-4 w-4 text-red-600" />}
-                <span className="text-xs font-medium">{isOnline ? "Online" : "Offline Mode"}</span>
-              </div>
-              <Button 
-                variant="outline" 
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => navigate("/notifications")}
-                className="font-medium"
+                className="hidden md:flex font-bold label-caps text-[10px]"
               >
-                Notifications
+                Alerts {(myAlerts && myAlerts.length > 0) ? `(${myAlerts.length})` : ""}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => navigate("/profile")}
-                className="font-medium"
+                className="font-bold label-caps text-[10px] border-2"
               >
                 Profile
               </Button>
               <Button
-                variant="outline"
+                variant="default"
+                size="sm"
                 onClick={async () => {
                   try {
                     await signOut();
@@ -176,7 +179,7 @@ export default function Dashboard() {
                     navigate("/auth");
                   }
                 }}
-                className="font-medium"
+                className="font-bold label-caps text-[10px] bg-primary glow-primary"
               >
                 Logout
               </Button>
@@ -185,7 +188,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8">
         {isTourist ? (
           // Tourist Dashboard
           <motion.div
@@ -197,68 +200,79 @@ export default function Dashboard() {
             <AdvisoryBanners />
 
             {!touristProfile ? (
-              <Card className="border-2 border-dashed">
-                <CardContent className="pt-6 text-center">
-                  <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold mb-2">Complete Your Registration</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Set up your digital tourist ID to access safety features
-                  </p>
-                  <Button onClick={() => navigate("/register")}>
-                    Create Digital ID
+              <Card className="border-2 border-dashed border-border bg-muted/50">
+                <CardContent className="py-12 text-center space-y-4">
+                  <div className="w-16 h-16 bg-background border-2 border-border rounded-full flex items-center justify-center mx-auto">
+                    <Shield className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-display font-bold">Incomplete Identification</h3>
+                    <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                      Provision your blockchain-secured digital tourist ID to activate full safety monitoring and emergency services.
+                    </p>
+                  </div>
+                  <Button onClick={() => navigate("/register")} className="font-bold h-12 px-8 bg-primary hover:bg-primary/90 glow-primary">
+                    Verify Identity Now
                   </Button>
                 </CardContent>
               </Card>
             ) : (
               <>
-                {/* Safety Score Card - show only when at least one itinerary exists */}
+                {/* Safety Score Card */}
                 {myItineraries && myItineraries.length > 0 ? (
-                  <Card className={`${getSafetyBg(safetyScore?.riskLevel || "safe")}`}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Shield className={`h-5 w-5 ${getSafetyColor(safetyScore?.riskLevel || "safe")}`} />
-                        Safety Score
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                  <Card className={`border-2 overflow-hidden shadow-lg ${getSafetyBg(safetyScore?.riskLevel || "safe")}`}>
+                    <div className="p-1 bg-gradient-to-r from-primary via-secondary to-accent opacity-30" />
+                    <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-3xl font-bold">
-                            {safetyScore?.currentScore || 85}/100
+                        <div className="label-caps text-primary">Biometric Safety Index</div>
+                        <Shield className={`h-6 w-6 ${getSafetyColor(safetyScore?.riskLevel || "safe")}`} />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                        <div className="space-y-1">
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-display text-6xl font-bold tracking-tighter">
+                              {safetyScore?.currentScore || 85}
+                            </span>
+                            <span className="text-xl font-bold text-muted-foreground">/ 100</span>
                           </div>
-                          <div className={`text-sm font-medium ${getSafetyColor(safetyScore?.riskLevel || "safe")}`}>
-                            {safetyScore?.riskLevel?.toUpperCase().replace("_", " ") || "SAFE"}
+                          <div className={`text-sm font-bold uppercase tracking-widest ${getSafetyColor(safetyScore?.riskLevel || "safe")}`}>
+                            STATUS: {safetyScore?.riskLevel?.replace("_", " ") || "SAFE"}
                           </div>
                         </div>
-                        <Button 
-                          size="lg"
-                          variant="destructive"
-                          onClick={onPanicClick}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          PANIC
-                        </Button>
+
+                        <div className="flex items-center gap-4">
+                          <div className="h-16 w-[1px] bg-border hidden md:block" />
+                          <Button
+                            size="lg"
+                            variant="destructive"
+                            onClick={onPanicClick}
+                            className="h-16 px-10 text-xl font-black tracking-widest bg-accent hover:bg-accent/90 glow-accent"
+                          >
+                            TRIGGER SOS
+                          </Button>
+                        </div>
                       </div>
 
-                      {/* Per-area risk flags from latest itinerary */}
+                      {/* Area Risks */}
                       {areaRisks?.length ? (
-                        <div className="mt-4">
-                          <div className="text-sm font-medium mb-2">Area Risk Flags</div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="pt-4 border-t border-border">
+                          <div className="label-caps !text-[10px] text-muted-foreground mb-3">Enroute Risk Analysis</div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                             {areaRisks.map((ar: any, i: number) => (
-                              <div key={i} className="p-2 rounded border flex items-center justify-between">
-                                <div className="text-sm">
-                                  {ar.locationName}
-                                  <span className="text-xs text-muted-foreground"> ({ar.latitude.toFixed(3)}, {ar.longitude.toFixed(3)})</span>
+                              <div key={i} className="p-3 bg-background/50 rounded-lg border border-border/50 flex flex-col gap-1">
+                                <div className="text-xs font-bold truncate text-primary">{ar.locationName}</div>
+                                <div className="flex items-center justify-between">
+                                  <div className="mono-data !text-[10px] text-muted-foreground">FLX-392</div>
+                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${ar.riskLevel === "critical" ? "bg-red-500 text-white" :
+                                    ar.riskLevel === "high_risk" ? "bg-orange-500 text-white" :
+                                      ar.riskLevel === "moderate" ? "bg-yellow-500 text-white" :
+                                        "bg-emerald-500 text-white"
+                                    }`}>
+                                    {ar.riskLevel.split("_")[0]}
+                                  </span>
                                 </div>
-                                <span className={`text-xs px-2 py-1 rounded ${
-                                  ar.riskLevel === "critical" ? "bg-red-100 text-red-800" :
-                                  ar.riskLevel === "high_risk" ? "bg-orange-100 text-orange-800" :
-                                  ar.riskLevel === "moderate" ? "bg-yellow-100 text-yellow-800" :
-                                  "bg-green-100 text-green-800"
-                                }`}>
-                                  {ar.riskLevel.replace("_", " ").toUpperCase()}
-                                </span>
                               </div>
                             ))}
                           </div>
@@ -267,278 +281,197 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                 ) : (
-                  // Prompt to create itinerary to enable safety analysis
-                  <Card className="border-2 border-dashed">
-                    <CardContent className="pt-6 text-center">
-                      <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-semibold mb-2">Create an Itinerary to Analyze Area Safety</h3>
-                      <p className="text-muted-foreground mb-4">
-                        Plan your route so we can show safety insights and raise flags for each area.
-                      </p>
-                      <Button onClick={() => navigate("/itinerary")}>
-                        Create Itinerary
+                  <Card className="border border-border bg-muted/20">
+                    <CardContent className="py-10 text-center space-y-4">
+                      <div className="w-12 h-12 bg-white border border-border rounded-lg flex items-center justify-center mx-auto">
+                        <MapPin className="h-6 w-6 text-secondary" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-display font-bold">No Itinerary Detected</h3>
+                        <p className="text-muted-foreground text-xs">Register your travel path to enable real-time risk profiling.</p>
+                      </div>
+                      <Button onClick={() => navigate("/itinerary")} variant="outline" className="font-bold label-caps !text-[10px] border-2">
+                        Initialize Route
                       </Button>
                     </CardContent>
                   </Card>
                 )}
 
-                {/* Quick Actions */}
+                {/* Quick Actions Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/location")}>
-                    <CardContent className="pt-6 text-center">
-                      <MapPin className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                      <h3 className="font-semibold">Share Location</h3>
-                      <p className="text-sm text-muted-foreground">Update your current location</p>
+                  {[
+                    { icon: MapPin, title: "Share Location", desc: "Update GPS Broadcast", color: "text-secondary", bg: "bg-secondary/10", path: "/location" },
+                    { icon: Clock, title: "My Itinerary", desc: "View Secure Path", color: "text-emerald-600", bg: "bg-emerald-50", path: "/itinerary" },
+                    { icon: AlertTriangle, title: "Signal History", desc: `${myAlerts?.length || 0} Incident Reports`, color: "text-orange-600", bg: "bg-orange-50", path: "/notifications" }
+                  ].map((action, i) => (
+                    <Card key={i} className="group cursor-pointer hover:border-primary transition-all bg-card shadow-none" onClick={() => navigate(action.path)}>
+                      <CardContent className="pt-8 pb-6 px-6 relative">
+                        <div className={`w-12 h-12 rounded ${action.bg} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                          <action.icon className={`h-6 w-6 ${action.color}`} />
+                        </div>
+                        <h3 className="font-display text-lg font-bold mb-1">{action.title}</h3>
+                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{action.desc}</p>
+                        <ArrowRight className="absolute right-6 bottom-6 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Specialized Navigation */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="border border-border bg-primary/5 group cursor-pointer hover:bg-primary/10 transition-colors" onClick={() => navigate("/translator")}>
+                    <CardContent className="p-6 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-primary rounded flex items-center justify-center">
+                          <Globe className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <div className="label-caps !text-[10px] text-primary mb-1">On-Device Edge AI</div>
+                          <div className="font-display font-bold text-lg">Secure Offline Translator</div>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-primary" />
                     </CardContent>
                   </Card>
 
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/itinerary")}>
-                    <CardContent className="pt-6 text-center">
-                      <Clock className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                      <h3 className="font-semibold">My Itinerary</h3>
-                      <p className="text-sm text-muted-foreground">View planned routes</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/notifications")}>
-                    <CardContent className="pt-6 text-center">
-                      <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                      <h3 className="font-semibold">Notifications</h3>
-                      <p className="text-sm text-muted-foreground">{myAlerts?.length || 0} active</p>
+                  <Card className="border border-border bg-slate-50">
+                    <CardContent className="p-6 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded flex items-center justify-center ${isOnline ? "bg-emerald-100" : "bg-red-100"}`}>
+                          {isOnline ? <Wifi className="h-6 w-6 text-emerald-600" /> : <WifiOff className="h-6 w-6 text-red-600" />}
+                        </div>
+                        <div>
+                          <div className="label-caps !text-[10px] text-muted-foreground mb-1">Network Synchronization</div>
+                          <div className="font-display font-bold text-lg">{isOnline ? "Systems Nominal" : "Offline Cache Active"}</div>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
-
-                {/* Recent Alerts */}
-                {myAlerts && myAlerts.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Recent Alerts</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {myAlerts.slice(0, 3).map((alert: any) => (
-                          <div key={alert._id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                            <div>
-                              <div className="font-medium">{alert.title}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {new Date(alert._creationTime).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <div className={`px-2 py-1 rounded text-xs font-medium ${
-                              alert.isResolved ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                            }`}>
-                              {alert.isResolved ? "Resolved" : "Active"}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
               </>
             )}
-
-            {/* Specialized Tools Case (Translator & Offline) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-              <Card 
-                className="group hover:border-indigo-400 transition-all cursor-pointer bg-indigo-50/30"
-                onClick={() => navigate("/translator")}
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-5 w-5 text-indigo-600" />
-                        <h3 className="font-semibold text-indigo-900">Offline Translator</h3>
-                      </div>
-                      <p className="text-sm text-slate-500">Communicate with locals & officials without internet using Edge AI.</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-slate-50 border-dashed">
-                <CardContent className="p-6 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-full ${isOnline ? "bg-emerald-100" : "bg-red-100"}`}>
-                      {isOnline ? <Wifi className="h-5 w-5 text-emerald-600" /> : <WifiOff className="h-5 w-5 text-red-600" />}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">{isOnline ? "Network Status: Online" : "Network Status: Offline"}</p>
-                      <p className="text-xs text-slate-500">{isOnline ? "All systems active & synced." : "Auto-queue enabled for mutations."}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </motion.div>
         ) : isOfficial ? (
           // Official Dashboard
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
             className="space-y-8"
           >
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Active Tourists</p>
-                      <p className="text-2xl font-bold">{allTourists?.length || 0}</p>
+            {/* Global Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { icon: Users, label: "Active Tourists", val: allTourists?.length || "0", color: "text-secondary" },
+                { icon: AlertTriangle, label: "Unresolved Signals", val: alertStats?.active || "0", color: "text-accent" },
+                { icon: CheckCircle, label: "Daily Clearances", val: alertStats?.resolved || "0", color: "text-emerald-500" },
+                { icon: Clock, label: "Avg Response", val: `${alertStats?.averageResponseTime || 2}M`, color: "text-orange-500" }
+              ].map((s, i) => (
+                <Card key={i} className="border border-border bg-card shadow-none">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="label-caps !text-[10px] text-muted-foreground">{s.label}</div>
+                        <s.icon className={`h-4 w-4 ${s.color}`} />
+                      </div>
+                      <div className="font-display text-4xl font-bold tracking-tight">{s.val}</div>
                     </div>
-                    <Users className="h-8 w-8 text-blue-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Active Alerts</p>
-                      <p className="text-2xl font-bold">{alertStats?.active || 0}</p>
-                    </div>
-                    <AlertTriangle className="h-8 w-8 text-red-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Resolved Today</p>
-                      <p className="text-2xl font-bold">{alertStats?.resolved || 0}</p>
-                    </div>
-                    <CheckCircle className="h-8 w-8 text-green-600" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Avg Response</p>
-                      <p className="text-2xl font-bold">{alertStats?.averageResponseTime || 0}m</p>
-                    </div>
-                    <Clock className="h-8 w-8 text-orange-600" />
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
-            {/* New compact sections */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Heatmap */}
-              <HeatmapCard />
-              
-              {/* IoT Signals */}
-              <IoTSignalsCard />
+            {/* Tactical Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <HeatmapCard />
+                <IncidentsBoardCard />
+              </div>
+              <div className="space-y-6">
+                <IoTSignalsCard />
+                <AnalyticsCard />
+                <div className="pt-4">
+                  <AdvisoryDialog />
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Incidents Board */}
-              <IncidentsBoardCard />
-              
-              {/* Analytics */}
-              <AnalyticsCard />
-            </div>
-
-            {/* Advisory Creation */}
-            <div className="flex justify-end">
-              <AdvisoryDialog />
-            </div>
-
-            {/* Active Alerts */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Live Alert Feed
-                </CardTitle>
+            {/* Live Feed Table */}
+            <Card className="border border-border bg-card shadow-none overflow-hidden">
+              <CardHeader className="bg-muted/30 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 font-display text-xl">
+                    <Activity className="h-5 w-5 text-accent" />
+                    Tactical Alert Stream
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="label-caps !text-[9px] text-muted-foreground">Live Monitoring Active</span>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {allAlerts && allAlerts.length > 0 ? (
-                  <div className="space-y-4">
-                    {allAlerts.slice(0, 5).map((alert: any) => (
-                      <div key={alert._id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className={`w-2 h-2 rounded-full ${
-                              alert.severity === "critical" ? "bg-red-500" :
-                              alert.severity === "high" ? "bg-orange-500" :
-                              alert.severity === "medium" ? "bg-yellow-500" : "bg-blue-500"
-                            }`} />
-                            <span className="font-medium">{alert.title}</span>
-                            <span className="text-xs px-2 py-1 bg-muted rounded">
-                              {alert.alertType.replace("_", " ").toUpperCase()}
+                  <div className="divide-y divide-border">
+                    {allAlerts.slice(0, 10).map((alert: any) => (
+                      <div key={alert._id} className="group hover:bg-muted/20 transition-colors p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`label-caps !text-[9px] px-2 py-0.5 rounded text-white ${alert.severity === "critical" ? "bg-accent" :
+                              alert.severity === "high" ? "bg-orange-500" : "bg-secondary"
+                              }`}>
+                              {alert.severity}
+                            </span>
+                            <span className="font-bold text-primary">{alert.title}</span>
+                            <span className="text-[10px] mono-data text-muted-foreground">
+                              {new Date(alert._creationTime).toLocaleTimeString()}
                             </span>
                           </div>
-                          <p className="text-sm text-muted-foreground">{alert.description}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(alert._creationTime).toLocaleString()}
-                          </p>
-                          {"location" in alert && alert.location?.latitude && alert.location?.longitude ? (
-                            <a
-                              href={`https://maps.google.com/?q=${alert.location.latitude},${alert.location.longitude}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs text-blue-600 underline mt-1 inline-block"
-                            >
-                              Open map
-                            </a>
-                          ) : null}
+                          <p className="text-xs text-muted-foreground max-w-2xl">{alert.description}</p>
                         </div>
-                        <div className="flex gap-2 items-center">
-                          <Button size="sm" onClick={() => navigate(`/alert/${alert._id}`)}>
-                            View
+                        <div className="flex items-center gap-2 self-end md:self-auto">
+                          <Button size="sm" variant="ghost" className="font-bold label-caps !text-[9px]" onClick={() => navigate(`/alert/${alert._id}`)}>
+                            Tactical View
                           </Button>
+
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                Assign
+                              <Button size="sm" variant="outline" className="font-bold label-caps !text-[9px] border-2">
+                                Assign Unit
                               </Button>
                             </DialogTrigger>
-                            <DialogContent>
+                            <DialogContent className="rounded-xl">
                               <DialogHeader>
-                                <DialogTitle>Assign Alert</DialogTitle>
+                                <DialogTitle className="font-display">Dispatch Coordination</DialogTitle>
                               </DialogHeader>
-                              <div className="space-y-3">
-                                <div className="text-sm text-muted-foreground">
-                                  Select an officer to assign this alert.
-                                </div>
-                                <div className="max-h-64 overflow-auto space-y-2">
+                              <div className="space-y-4">
+                                <div className="label-caps !text-[11px] text-muted-foreground">Available Personnel</div>
+                                <div className="max-h-64 overflow-auto space-y-2 pr-2">
                                   {officers?.length
                                     ? officers.map((o: any) => (
-                                        <div
-                                          key={o._id}
-                                          className="p-2 border rounded flex items-center justify-between"
-                                        >
+                                      <Card key={o._id} className="border border-border shadow-none hover:border-secondary transition-colors cursor-pointer">
+                                        <div className="p-4 flex items-center justify-between">
                                           <div>
-                                            <div className="font-medium">{o.name || o.email || "Officer"}</div>
-                                            <div className="text-xs text-muted-foreground">{o.role}</div>
+                                            <div className="font-bold text-sm">{o.name || o.email}</div>
+                                            <div className="label-caps !text-[9px] text-muted-foreground">{o.role}</div>
                                           </div>
                                           <Button
                                             size="sm"
                                             onClick={async () => {
                                               try {
                                                 await assignAlert({ alertId: alert._id as any, officerId: o._id as any });
-                                                toast.success("Assigned.");
+                                                toast.success("Unit assigned successfully.");
                                               } catch (e) {
-                                                console.error(e);
-                                                toast.error("Failed to assign.");
+                                                toast.error("Dispatch failure.");
                                               }
                                             }}
+                                            className="bg-secondary hover:bg-secondary/90 font-bold label-caps !text-[9px]"
                                           >
                                             Assign
                                           </Button>
                                         </div>
-                                      ))
-                                    : <div className="text-sm text-muted-foreground">No officers found.</div>}
+                                      </Card>
+                                    ))
+                                    : <p className="text-center py-4 text-xs text-muted-foreground">No units available for dispatch.</p>}
                                 </div>
                               </div>
                             </DialogContent>
@@ -548,9 +481,14 @@ export default function Dashboard() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-4" />
-                    <p>No active alerts. All tourists are safe.</p>
+                  <div className="py-20 text-center space-y-4">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto opacity-50">
+                      <CheckCircle className="h-8 w-8 text-emerald-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-display font-bold text-xl">All Channels Clear</h3>
+                      <p className="text-muted-foreground text-sm">No active distress signals detected in the network.</p>
+                    </div>
                   </div>
                 )}
               </CardContent>

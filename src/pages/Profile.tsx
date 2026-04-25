@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
 import { motion } from "framer-motion";
-import { ShieldUser } from "lucide-react";
+import { ShieldUser, ArrowLeft, Shield, Wallet, Fingerprint, ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -21,10 +22,12 @@ export default function Profile() {
   const createUserProfileAction = useAction(api.fabric.createUserProfile);
   const verifyOnChainAction = useAction(api.fabric.verifyDigitalIdOnChain);
   const currentProfile = useQuery(api.tourists.getCurrentProfile);
+
   const verified = useQuery(
     api.tourists.verifyDigitalId,
     currentProfile?.digitalIdHash ? { digitalIdHash: currentProfile.digitalIdHash } : "skip"
   );
+
   const [verifyLoading, setVerifyLoading] = useState(false);
   const [onChainNow, setOnChainNow] = useState<{ checked: boolean; valid: boolean | null; raw?: string } | null>(null);
 
@@ -69,7 +72,6 @@ export default function Profile() {
     };
   }, [isAuthenticated, user?._id, getUserWalletAction]);
 
-  // Handlers
   const handleCreateOnChainProfile = async () => {
     if (!user?._id) return;
     try {
@@ -128,7 +130,7 @@ export default function Profile() {
           try {
             const parsed = JSON.parse(data);
             if (typeof parsed?.valid === "boolean") valid = parsed.valid;
-          } catch {}
+          } catch { }
         }
       }
       setOnChainNow({ checked: true, valid, raw: data });
@@ -149,151 +151,213 @@ export default function Profile() {
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-secondary" />
       </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="min-h-screen bg-background"
-    >
-      <header className="border-b bg-white">
-        <div className="max-w-4xl mx-auto px-8 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ShieldUser className="h-6 w-6" />
-            <h1 className="text-xl font-semibold tracking-tight">Profile</h1>
+    <div className="min-h-screen bg-background font-sans flex flex-col">
+      <header className="border-b border-border bg-background/95 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/dashboard")}
+              className="font-bold label-caps text-[10px]"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              TERMINAL
+            </Button>
+            <div className="h-6 w-[1px] bg-border" />
+            <div className="flex items-center gap-3">
+              <ShieldUser className="h-5 w-5 text-secondary" />
+              <h1 className="text-xl font-display font-bold tracking-tight text-primary uppercase">
+                CREDENTIAL REGISTRY
+              </h1>
+            </div>
           </div>
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
-            Back
-          </Button>
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-8 py-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Account</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Name</div>
-                <div className="font-medium">{user?.name || "—"}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Email</div>
-                <div className="font-medium">{user?.email || "—"}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">Role</div>
-                <div className="font-medium capitalize">{user?.role || "tourist"}</div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground">User ID</div>
-                <div className="font-mono text-xs break-all">{user?._id}</div>
-              </div>
-            </div>
+      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-12 space-y-10 animate-in fade-in slide-in-from-bottom-4">
+        <div className="space-y-2">
+          <div className="label-caps !text-[11px] text-secondary font-black tracking-[0.3em]">USER AUTHENTICATION & IDENTITY</div>
+          <h2 className="text-4xl font-display font-bold text-primary tracking-tighter">Operator Profile</h2>
+          <p className="text-muted-foreground font-medium max-w-2xl">
+            Manage your secure travel credentials and on-chain identity. All signatures are backed by the Hyperledger Fabric blockchain.
+          </p>
+        </div>
 
-            <div className="pt-4">
-              <Button variant="outline" onClick={() => navigate("/notifications")}>
-                View Notifications
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Blockchain Wallet */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Blockchain Wallet</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-              Linked Wallet:{" "}
-              <span className="font-mono">
-                {isLoadingWallet ? "Loading..." : linkedWallet || "Not linked"}
-              </span>
-            </div>
-
-            <div className="flex flex-col md:flex-row items-stretch md:items-end gap-3">
-              <div className="flex-1">
-                <div className="text-sm font-medium mb-1">Wallet Address</div>
-                <Input
-                  value={walletAddress}
-                  onChange={(e) => setWalletAddress(e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <Button onClick={handleLinkWallet} disabled={isLinking || !walletAddress.trim()}>
-                {isLinking ? "Linking..." : "Link Wallet"}
-              </Button>
-              <Button variant="outline" onClick={handleCreateOnChainProfile} disabled={isLoadingWallet}>
-                Create On-Chain Profile
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Digital ID */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Digital Tourist ID</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="text-sm text-muted-foreground">Digital ID Hash</div>
-                <div className="font-mono text-xs break-all">
-                  {currentProfile?.digitalIdHash || "—"}
+        <div className="grid grid-cols-1 gap-8">
+          {/* Base Account Info */}
+          <Card className="border border-border bg-card shadow-xl rounded-2xl overflow-hidden">
+            <div className="h-1 bg-primary" />
+            <CardHeader className="bg-muted/30 border-b border-border p-8">
+              <CardTitle className="font-display text-xl uppercase tracking-widest text-primary flex items-center gap-3">
+                <Shield className="h-5 w-5 text-secondary" />
+                SYSTEM ACCOUNT
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div className="space-y-1">
+                  <div className="label-caps text-[10px] text-muted-foreground font-black">LEGAL NAME</div>
+                  <div className="font-bold text-primary text-xl truncate">{user?.name || "—"}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="label-caps text-[10px] text-muted-foreground font-black">COMMUNICATION VECTOR</div>
+                  <div className="font-bold text-primary text-lg truncate">{user?.email || "—"}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="label-caps text-[10px] text-muted-foreground font-black">CLEARANCE LEVEL</div>
+                  <Badge className="bg-secondary/10 text-secondary border-none font-black label-caps text-[10px] px-3 py-1 mt-1">
+                    {user?.role || "TOURIST"}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <div className="label-caps text-[10px] text-muted-foreground font-black">SYSTEM UID</div>
+                  <div className="mono-data text-[10px] break-all opacity-60 mt-1">{user?._id}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="text-sm text-muted-foreground">Status</div>
-                {verified ? (
-                  verified.isValid ? (
-                    <Badge className="bg-green-600 hover:bg-green-600 text-white">Valid</Badge>
-                  ) : (
-                    <Badge className="bg-red-600 hover:bg-red-600 text-white">Invalid</Badge>
-                  )
-                ) : (
-                  <Badge className="bg-gray-400 hover:bg-gray-400 text-white">Unknown</Badge>
-                )}
-                {verified?.onChain?.checked && (
-                  verified.onChain.valid ? (
-                    <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">On-Chain OK</Badge>
-                  ) : (
-                    <Badge className="bg-amber-600 hover:bg-amber-600 text-white">On-Chain Mismatch</Badge>
-                  )
-                )}
-                {onChainNow?.checked && (
-                  onChainNow.valid ? (
-                    <Badge className="bg-emerald-700 hover:bg-emerald-700 text-white">Just Verified</Badge>
-                  ) : (
-                    <Badge className="bg-rose-700 hover:bg-rose-700 text-white">Just Failed</Badge>
-                  )
+
+              <div className="mt-10 pt-8 border-t border-border">
+                <Button variant="outline" onClick={() => navigate("/notifications")} className="h-12 px-6 border-2 font-black label-caps text-[11px] tracking-widest group">
+                  ACCESS NOTIFICATION LOGS
+                  <ExternalLink className="ml-2 h-4 w-4 opacity-40 group-hover:opacity-100 transition-opacity" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Blockchain Integration */}
+          <Card className="border border-border bg-card shadow-xl rounded-2xl overflow-hidden">
+            <div className="h-1 bg-secondary" />
+            <CardHeader className="bg-muted/30 border-b border-border p-8">
+              <CardTitle className="font-display text-xl uppercase tracking-widest text-primary flex items-center gap-3">
+                <Wallet className="h-5 w-5 text-secondary" />
+                DISTRIBUTED LEDGER
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-8 space-y-8">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-muted/20 border border-border rounded-xl">
+                <div className="space-y-1">
+                  <div className="label-caps text-[10px] text-muted-foreground font-black">ACTIVE WALLET ANCHOR</div>
+                  <div className="mono-data text-primary font-bold text-md break-all">
+                    {isLoadingWallet ? "SEARCHING LEDGER..." : linkedWallet || "UNLINKED"}
+                  </div>
+                </div>
+                {!linkedWallet && !isLoadingWallet && (
+                  <Button variant="secondary" onClick={handleCreateOnChainProfile} className="h-11 font-black label-caps text-[10px] tracking-widest px-6 shrink-0">
+                    PROVISION IDENTITY
+                  </Button>
                 )}
               </div>
-            </div>
-            <div className="flex gap-3">
-              <Button onClick={handleVerifyDigitalId} disabled={verifyLoading || !currentProfile?.digitalIdHash}>
-                {verifyLoading ? "Verifying..." : "Verify Now"}
-              </Button>
-              {verified?.validityPeriod && (
-                <Badge variant="outline">
-                  Valid until {new Date(verified.validityPeriod.end).toLocaleString()}
-                </Badge>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                  <div className="space-y-3">
+                    <Label className="label-caps !text-[11px] font-black text-primary tracking-widest">Update Ledger Link</Label>
+                    <Input
+                      value={walletAddress}
+                      onChange={(e) => setWalletAddress(e.target.value)}
+                      placeholder="0x... [SECURE HASH]"
+                      className="h-14 border-2 focus:ring-secondary font-bold"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleLinkWallet}
+                    disabled={isLinking || !walletAddress.trim()}
+                    className="h-14 bg-primary text-white font-black label-caps text-[11px] tracking-[0.2em]"
+                  >
+                    {isLinking ? <Loader2 className="h-5 w-5 animate-spin" /> : "OVERWRITE LEDGER LINK"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Digital Registry Entry */}
+          <Card className="border border-border bg-card shadow-xl rounded-2xl overflow-hidden">
+            <div className="h-1 bg-blue-600" />
+            <CardHeader className="bg-muted/30 border-b border-border p-8">
+              <CardTitle className="font-display text-xl uppercase tracking-widest text-primary flex items-center gap-3">
+                <Fingerprint className="h-5 w-5 text-secondary" />
+                DIGITAL VECTOR REGISTRY
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-8 space-y-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                <div className="space-y-4">
+                  <div className="label-caps text-[11px] text-muted-foreground font-black tracking-widest">REGISTRY VECTOR HASH</div>
+                  <div className="mono-data p-4 bg-muted/30 border border-border rounded-lg text-[11px] break-all text-primary font-bold">
+                    {currentProfile?.digitalIdHash || "ZERO_VECTOR_UNDEFINED"}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="label-caps text-[11px] text-muted-foreground font-black tracking-widest">REAL-TIME VALIDATION</div>
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    {verified ? (
+                      verified.isValid ? (
+                        <Badge className="bg-emerald-500 text-white border-none font-black label-caps text-[10px] px-4 py-2">
+                          <Shield className="h-3.5 w-3.5 mr-2" />
+                          DATABASE: VALID
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-rose-500 text-white border-none font-black label-caps text-[10px] px-4 py-2">
+                          <ShieldUser className="h-3.5 w-3.5 mr-2" />
+                          DATABASE: REVOKED
+                        </Badge>
+                      )
+                    ) : (
+                      <Badge className="bg-muted text-muted-foreground border-none font-black label-caps text-[10px] px-4 py-2">PENDING_LINK</Badge>
+                    )}
+
+                    {verified?.onChain?.checked && (
+                      verified.onChain.valid ? (
+                        <Badge className="bg-primary text-white border-none font-black label-caps text-[10px] px-4 py-2">
+                          <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                          CHAIN: VERIFIED
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-amber-600 text-white border-none font-black label-caps text-[10px] px-4 py-2">CHAIN: MISMATCH</Badge>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-8 border-t border-border flex flex-wrap items-center justify-between gap-6">
+                <Button
+                  onClick={handleVerifyDigitalId}
+                  disabled={verifyLoading || !currentProfile?.digitalIdHash}
+                  className="h-14 px-8 bg-secondary hover:bg-secondary/90 text-white font-black label-caps text-[11px] tracking-widest "
+                >
+                  {verifyLoading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : "PING BLOCKCHAIN REGISTRY"}
+                </Button>
+
+                {verified?.validityPeriod && (
+                  <div className="flex flex-col items-end">
+                    <div className="label-caps text-[9px] text-muted-foreground font-black uppercase mb-1">Vector Expiration</div>
+                    <div className="font-bold text-primary label-caps text-[11px]">
+                      {new Date(verified.validityPeriod.end).toLocaleString()}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {onChainNow?.checked && (
+                <pre className="bg-muted p-4 rounded-xl border border-border text-[10px] mono-data overflow-auto max-h-40 text-muted-foreground">
+                  RAW LEDGER RESPONSE: \n{onChainNow.raw || "NO_DATA_RETURNED"}
+                </pre>
               )}
-            </div>
-            {verified?.onChain?.raw && (
-              <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-60">{verified.onChain.raw}</pre>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </motion.div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
   );
 }
