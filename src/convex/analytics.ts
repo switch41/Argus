@@ -57,12 +57,12 @@ export const getOverview = query({
 
 export const exportIncidentsCsv = action({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<string> => {
     // Use public query; unauthorized users will safely receive empty results
-    const allAlerts = await ctx.runQuery(api.alerts.listAllIncidents, { limit: 100 });
+    const allAlerts: any[] = await ctx.runQuery(api.alerts.listAllIncidents, { limit: 100 });
 
     const csvHeader = "ID,Type,Severity,Title,Description,Created,Resolved,ResponseTime,Location\n";
-    const csvRows = allAlerts
+    const csvRows: string = allAlerts
       .map((alert: any) => {
         const location =
           "location" in alert && alert.location

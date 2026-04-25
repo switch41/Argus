@@ -2,13 +2,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
-import { Activity } from "lucide-react";
+import { Activity, ShieldCheck } from "lucide-react";
 import CaseDetailDialog from "./CaseDetailDialog";
+import { useAction } from "convex/react";
+import { toast } from "sonner";
 
 export default function IncidentsBoardCard() {
   const openCases = useQuery(api.cases.getByStatus, { status: "open" });
   const assignedCases = useQuery(api.cases.getByStatus, { status: "assigned" });
   const updateStatus = useMutation(api.cases.updateStatus);
+  const fileEFir = useAction(api.fabric.fileEFirOnChain);
 
   return (
     <Card>
@@ -43,6 +46,25 @@ export default function IncidentsBoardCard() {
                 onClick={() => updateStatus({ caseId: case_._id as any, status: "assigned" })}
               >
                 Assign
+              </Button>
+              <Button
+                size="sm"
+                variant="glow"
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+                onClick={async () => {
+                  try {
+                    const res = await fileEFir({
+                      firId: case_._id,
+                      touristId: case_.alertId, // Simplified for demo
+                      incidentData: JSON.stringify({ priority: case_.priority, status: case_.status })
+                    });
+                    toast.success(`E-FIR Filed: ${res.txId.slice(0, 8)}...`);
+                  } catch (e: any) {
+                    toast.error(e.message);
+                  }
+                }}
+              >
+                <ShieldCheck className="h-3 w-3 mr-1" /> E-FIR
               </Button>
               <CaseDetailDialog caseId={case_._id} />
             </div>

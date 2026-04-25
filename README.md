@@ -1,257 +1,375 @@
+# 🛡️ Safe Travel ID
+
+> **Advanced Tourist Safety Management System** — Blockchain-secured digital identity, AI-powered risk assessment, and real-time emergency response for comprehensive tourist safety.
+
+---
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Application Workflows](#application-workflows)
+- [Hyperledger Fabric Integration](#hyperledger-fabric-integration)
+- [Authentication](#authentication)
+- [Team](#team)
+
+---
+
 ## Overview
 
-This project uses the following tech stack:
-- Vite
-- Typescript
-- React Router v7 (all imports from `react-router` instead of `react-router-dom`)
-- React 19 (for frontend components)
-- Tailwind v4 (for styling)
-- Shadcn UI (for UI components library)
-- Lucide Icons (for icons)
-- Convex (for backend & database)
-- Convex Auth (for authentication)
-- Framer Motion (for animations)
-- Three js (for 3d models)
+Safe Travel ID is a comprehensive, real-time tourist safety management platform that combines blockchain-secured digital identity verification, AI-powered risk assessment, and instant emergency response. It serves three stakeholder groups — **tourists**, **law enforcement**, and **tourism officials** — through a unified, role-based dashboard with live alerts, case management, and analytics.
 
-All relevant files live in the 'src' directory.
+---
 
-Use pnpm for the package manager.
+## Features
 
-## Setup
+### 🪪 Digital Tourist ID
+- Blockchain-secured (Hyperledger Fabric) digital identity issuance and verification
+- Passport-based registration with emergency contact storage
+- On-chain hash for tamper-proof identity validation
 
-This project is set up already and running on a cloud environment, as well as a convex development in the sandbox.
+### 🗺️ Real-Time Location Tracking
+- GPS-based location sharing with accuracy metrics
+- Geo-fence zone management (safe / restricted / high-risk / emergency services)
+- Route deviation detection from planned itineraries
+
+### 🚨 Emergency Response System
+- **One-tap PANIC button** with instant GPS-tagged alerts to authorities
+- Automatic E-FIR (Electronic First Information Report) generation
+- Case management with priority-based assignment to officers
+- Two-way communication between tourists and response units
+
+### 📊 AI-Powered Safety Scoring
+- Dynamic 0–100 safety score computed from multiple risk factors:
+  - Location risk · Behavior patterns · Time of day · Crowd density · Weather conditions
+- Per-area risk flags on itinerary waypoints
+- Risk level classification: Safe → Moderate → High Risk → Critical
+
+### 👥 Multi-Stakeholder Dashboards
+- **Tourist Dashboard**: Safety score, itinerary management, quick actions, alerts, offline translator
+- **Officer/Admin Dashboard**: Live alert feed, alert statistics, heatmap visualization, IoT signal monitoring, incident board, analytics charts, advisory management
+
+### 🌐 Offline-First Capabilities
+- Offline mutation queue with automatic background sync when connectivity resumes
+- Edge AI-powered offline translator with pre-loaded safety phrases (Hindi, Spanish, French)
+- Network status indicator across the app
+
+### 📢 Advisory & Notification System
+- Travel advisories targeted by audience (all / tourists / officials) and geographic area
+- Real-time notification center with categorized alerts (alert, safety update, system, emergency)
+- Toast notifications for all user-facing actions
+
+### 📈 Analytics & Monitoring
+- System-wide statistics: active tourists, alert counts, response times, safety averages
+- IoT device signal tracking (SOS, vitals, location)
+- Heatmap of incident clusters
+- Audit logging for all administrative actions
+
+### 🌍 Multi-Language Support
+- Auth flow available in English, Spanish, and Hindi
+- Offline translator with quick-access safety phrase cards
+
+### ☁️ Live Weather Integration
+- Real-time local weather on the landing page via Open-Meteo API
+- Temperature, wind speed, and weather condition display
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Frontend** | React 19, TypeScript, Vite 6 |
+| **Routing** | React Router v7 |
+| **Styling** | Tailwind CSS v4, shadcn/ui (New York style) |
+| **Animations** | Framer Motion |
+| **3D Graphics** | Three.js, React Three Fiber, Drei |
+| **Icons** | Lucide React |
+| **Backend & Database** | Convex (real-time serverless) |
+| **Authentication** | Convex Auth (Email OTP + Anonymous) |
+| **Blockchain** | Hyperledger Fabric (Digital ID issuance & verification) |
+| **Toasts** | Sonner |
+| **Charts** | Recharts |
+| **Package Manager** | pnpm |
+
+---
+
+## Project Structure
+
+```
+safe-travel-id/
+├── public/                      # Static assets (logos)
+├── src/
+│   ├── App.tsx                  # Root component — providers + routing
+│   ├── main.tsx                 # React entry point
+│   ├── index.css                # Tailwind + theme variables
+│   ├── instrumentation.tsx      # Error boundary & error handling
+│   ├── components/
+│   │   ├── ui/                  # shadcn/ui primitives (46 components)
+│   │   ├── dashboard/           # Dashboard cards (Heatmap, IoT, Analytics, etc.)
+│   │   └── LogoDropdown.tsx     # Logo component
+│   ├── convex/
+│   │   ├── schema.ts            # Full database schema (16 tables)
+│   │   ├── auth.ts              # Auth configuration
+│   │   ├── auth/emailOtp.ts     # Email OTP provider
+│   │   ├── tourists.ts          # Tourist CRUD, safety scores, itineraries
+│   │   ├── alerts.ts            # Alert management, panic button
+│   │   ├── cases.ts             # Case management
+│   │   ├── fabric.ts            # Hyperledger Fabric integration
+│   │   ├── users.ts             # User management
+│   │   ├── notifications.ts     # Notification system
+│   │   ├── advisories.ts        # Travel advisories
+│   │   ├── analytics.ts         # System statistics
+│   │   ├── devices.ts           # IoT device signals
+│   │   ├── messages.ts          # Two-way messaging
+│   │   ├── audit.ts             # Audit logging
+│   │   ├── exports.ts           # Data export
+│   │   └── seed.ts              # Seed data
+│   ├── pages/
+│   │   ├── Landing.tsx          # Landing page with hero, features, weather
+│   │   ├── Auth.tsx             # Email OTP + anonymous + multi-language auth
+│   │   ├── Dashboard.tsx        # Role-based dashboard (tourist / officer / admin)
+│   │   ├── TouristRegistration.tsx  # Digital ID registration form
+│   │   ├── Profile.tsx          # User profile management
+│   │   ├── Emergency.tsx        # PANIC button with GPS + map
+│   │   ├── Itinerary.tsx        # Trip itinerary planning
+│   │   ├── LocationShare.tsx    # Location sharing
+│   │   ├── Notifications.tsx    # Notification center
+│   │   ├── Translator.tsx       # Offline AI translator
+│   │   ├── AdminFabric.tsx      # Blockchain admin panel
+│   │   └── NotFound.tsx         # 404 page
+│   ├── hooks/
+│   │   ├── use-auth.ts          # Authentication hook
+│   │   └── use-mobile.ts        # Mobile detection
+│   ├── lib/
+│   │   ├── utils.ts             # cn() utility (clsx + twMerge)
+│   │   └── offline-manager.ts   # Offline queue & sync manager
+│   └── types/                   # TypeScript type definitions
+├── chaincode/                   # Hyperledger Fabric chaincode
+├── package.json
+├── vite.config.ts
+├── convex.json
+├── vercel.json
+└── tsconfig.json
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js** ≥ 18
+- **pnpm** (recommended package manager)
+- A **Convex** account ([convex.dev](https://convex.dev))
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/fourleaf/safe-travel-id.git
+cd safe-travel-id
+
+# Install dependencies
+pnpm install
+
+# Set up environment variables (see section below)
+cp .env.example .env
+
+# Start the Convex backend
+npx convex dev
+
+# In a separate terminal, start the frontend
+pnpm dev
+```
+
+The app will be available at `http://localhost:5173`.
+
+---
 
 ## Environment Variables
 
-The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
+### Client-Side (`.env`)
 
-The convex server has a separate set of environment variables that are accessible by the convex backend.
+```env
+VITE_CONVEX_URL=https://your-deployment.convex.cloud
+CONVEX_DEPLOYMENT=dev:your-deployment
+```
 
-Currently, these variables include auth-specific keys: JWKS, JWT_PRIVATE_KEY, and SITE_URL.
+### Convex Server (Dashboard → Settings → Environment Variables)
 
+```env
+# Authentication
+JWKS=<your-jwks>
+JWT_PRIVATE_KEY=<your-jwt-private-key>
+SITE_URL=<your-site-url>
 
-# Using Authentication (Important!)
+# Hyperledger Fabric (optional)
+CONNECTION_PROFILE_PATH=/path/to/connection-profile.yaml
+WALLET_PATH=/path/to/wallet
+FABRIC_IDENTITY_LABEL=appUser
+FABRIC_CHANNEL=mychannel
+FABRIC_CHAINCODE=SafeTourContract
+FABRIC_SDK_DISCOVERY=true
+DISCOVERY_AS_LOCALHOST=true
+```
 
-You must follow these conventions when using authentication.
+---
 
-## Auth is already set up.
+## Application Workflows
 
-All convex authentication functions are already set up. The auth currently uses email OTP and anonymous users, but can support more.
+### 1. Tourist Registration Flow
 
-The email OTP configuration is defined in `src/convex/auth/emailOtp.ts`. DO NOT MODIFY THIS FILE.
+```
+Landing Page → Sign In / Sign Up (Email OTP or Guest)
+    → Dashboard → "Create Digital ID"
+    → Fill Tourist Registration Form
+        (Passport, Nationality, Entry Point, Duration,
+         Emergency Contacts, Medical Conditions)
+    → Digital Tourist ID issued (on-chain hash via Fabric or local fallback)
+    → Dashboard unlocks full safety features
+```
 
-Also, DO NOT MODIFY THESE AUTH FILES: `src/convex/auth.config.ts` and `src/convex/auth.ts`.
+### 2. Emergency Response Flow
 
-## Using Convex Auth on the backend
+```
+Tourist triggers PANIC button (Dashboard or floating SOS)
+    → GPS location acquired automatically
+    → Optional: Tourist adds emergency description
+    → Alert created with severity "critical" + type "panic_button"
+    → Alert appears in Officer Dashboard → Live Alert Feed
+    → Officer assigns alert to available unit
+    → Case created → Investigation → Resolution
+    → E-FIR automatically generated with incident details
+    → Tourist notified of resolution
+```
 
-On the `src/convex/users.ts` file, you can use the `getCurrentUser` function to get the current user's data.
+### 3. Safety Scoring & Itinerary Flow
 
-## Using Convex Auth on the frontend
+```
+Tourist creates itinerary (waypoints + dates)
+    → System calculates per-area risk assessment
+    → Dynamic safety score (0–100) computed from:
+        Location Risk + Behavior + Time of Day + Crowd + Weather
+    → Risk flags displayed per itinerary waypoint
+    → Geo-fence monitoring begins for active itinerary
+    → Route deviation → automatic alert to authorities
+```
 
-The `/auth` page is already set up to use auth. Navigate to `/auth` for all log in / sign up sequences.
+### 4. Officer / Admin Workflow
 
-You MUST use this hook to get user data. Never do this yourself without the hook:
+```
+Officer logs in → Safety Control Center
+    → View live alert feed (filterable by severity)
+    → Assign alerts to units
+    → Case management: open → assigned → investigating → resolved → closed
+    → View heatmap of incident clusters
+    → Monitor IoT signals (SOS, vitals, location)
+    → Create travel advisories (targeted by audience + area)
+    → Review analytics: active tourists, response times, alert trends
+    → Audit log for all administrative actions
+```
+
+### 5. Offline Workflow
+
+```
+Tourist loses connectivity
+    → App detects offline state → shows "Offline Mode" indicator
+    → Mutations queued locally (localStorage)
+    → Tourist can still use:
+        - Offline Translator (pre-loaded safety phrases)
+        - SOS (queued for when back online)
+    → Connectivity restored → automatic background sync
+    → Toast: "All offline actions successfully synced!"
+```
+
+### 6. Authentication Flow
+
+```
+User opens /auth
+    → Choose language (English / Spanish / Hindi)
+    → Enter email → OTP sent (server console in dev)
+    → Enter 6-digit OTP → verified → redirect to dashboard
+    OR
+    → "Continue as Guest" → anonymous session → dashboard
+```
+
+### 7. Blockchain Verification Flow
+
+```
+Admin opens /admin/fabric
+    → View all tourist profiles with Digital ID hashes
+    → "Verify on Chain" → queries Hyperledger Fabric
+    → Returns on-chain validity status
+    → Discrepancies flagged for manual review
+```
+
+---
+
+## Hyperledger Fabric Integration
+
+Server actions in `src/convex/fabric.ts` integrate with a Hyperledger Fabric network:
+
+- **Issuance**: When a tourist profile is created, `fabric.issueDigitalId` is called to store an on-chain hash. Falls back to a local `DID_...` placeholder if Fabric is unavailable.
+- **Verification**: `fabric.verifyDigitalIdOnChain` reconciles database state with on-chain validity.
+- **Chaincode**: Must implement `IssueDigitalId`, `VerifyDigitalId`, and related functions.
+
+See `chaincode/` directory for the Fabric chaincode source.
+
+---
+
+## Authentication
+
+### Setup
+
+Authentication is fully configured using **Convex Auth** with two providers:
+
+| Provider | Description |
+|----------|-------------|
+| **Email OTP** | 6-digit code sent to email (console-logged in dev mode) |
+| **Anonymous** | Instant guest access with limited permissions |
+
+### Frontend Usage
+
 ```typescript
 import { useAuth } from "@/hooks/use-auth";
 
 const { isLoading, isAuthenticated, user, signIn, signOut } = useAuth();
 ```
 
-## Protected Routes
+### Role-Based Access
 
-When protecting a page, use the auth hooks to check for authentication and redirect to /auth.
+| Role | Access Level |
+|------|-------------|
+| `tourist` / `user` | Tourist dashboard, self-service features |
+| `police` | Officer dashboard, alert management, cases |
+| `tourism_official` | Officer dashboard + advisory creation |
+| `admin` | Full system governance, Fabric admin, analytics |
 
-## Auth Page
+---
 
-The auth page is defined in `src/pages/Auth.tsx`. Redirect authenticated pages and sign in / sign up to /auth.
+## Scripts
 
-## Authorization
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start Vite dev server |
+| `pnpm build` | TypeScript check + production build |
+| `pnpm preview` | Preview production build |
+| `pnpm lint` | Run ESLint |
+| `pnpm format` | Format with Prettier |
 
-You can perform authorization checks on the frontend and backend.
+---
 
-On the frontend, you can use the `useAuth` hook to get the current user's data and authentication state.
+## License
 
-You should also be protecting queries, mutations, and actions at the base level, checking for authorization securely.
+This project is proprietary. All rights reserved.
 
-## Adding a redirect after auth
+---
 
-In `src/main.tsx`, you must add a redirect after auth URL to redirect to the correct dashboard/profile/page that should be created after authentication.
-
-# Frontend Conventions
-
-You will be using the Vite frontend with React 19, Tailwind v4, and Shadcn UI.
-
-Generally, pages should be in the `src/pages` folder, and components should be in the `src/components` folder.
-
-Shadcn primitives are located in the `src/components/ui` folder and should be used by default.
-
-## Page routing
-
-Your page component should go under the `src/pages` folder.
-
-When adding a page, update the react router configuration in `src/main.tsx` to include the new route you just added.
-
-## Shad CN conventions
-
-Follow these conventions when using Shad CN components, which you should use by default.
-- Remember to use "cursor-pointer" to make the element clickable
-- For title text, use the "tracking-tight font-bold" class to make the text more readable
-- Always make apps MOBILE RESPONSIVE. This is important
-- AVOID NESTED CARDS. Try and not to nest cards, borders, components, etc. Nested cards add clutter and make the app look messy.
-- AVOID SHADOWS. Avoid adding any shadows to components. stick with a thin border without the shadow.
-- Avoid skeletons; instead, use the loader2 component to show a spinning loading state when loading data.
-
-
-## Landing Pages
-
-You must always create good-looking designer-level styles to your application. 
-- Make it well animated and fit a certain "theme", ie neo brutalist, retro, neumorphism, glass morphism, etc
-
-Use known images and emojis from online.
-
-If the user is logged in already, show the get started button to say "Dashboard" or "Profile" instead to take them there.
-
-## Responsiveness and formatting
-
-Make sure pages are wrapped in a container to prevent the width stretching out on wide screens. Always make sure they are centered aligned and not off-center.
-
-Always make sure that your designs are mobile responsive. Verify the formatting to ensure it has correct max and min widths as well as mobile responsiveness.
-
-- Always create sidebars for protected dashboard pages and navigate between pages
-- Always create navbars for landing pages
-- On these bars, the created logo should be clickable and redirect to the index page
-
-## Animating with Framer Motion
-
-You must add animations to components using Framer Motion. It is already installed and configured in the project.
-
-To use it, import the `motion` component from `framer-motion` and use it to wrap the component you want to animate.
-
-
-### Other Items to animate
-- Fade in and Fade Out
-- Slide in and Slide Out animations
-- Rendering animations
-- Button clicks and UI elements
-
-Animate for all components, including on landing page and app pages.
-
-## Three JS Graphics
-
-Your app comes with three js by default. You can use it to create 3D graphics for landing pages, games, etc.
-
-
-## Colors
-
-You can override colors in: `src/index.css`
-
-This uses the oklch color format for tailwind v4.
-
-Always use these color variable names.
-
-Make sure all ui components are set up to be mobile responsive and compatible with both light and dark mode.
-
-Set theme using `dark` or `light` variables at the parent className.
-
-## Styling and Theming
-
-When changing the theme, always change the underlying theme of the shad cn components app-wide under `src/components/ui` and the colors in the index.css file.
-
-Avoid hardcoding in colors unless necessary for a use case, and properly implement themes through the underlying shad cn ui components.
-
-When styling, ensure buttons and clickable items have pointer-click on them (don't by default).
-
-Always follow a set theme style and ensure it is tuned to the user's liking.
-
-## Toasts
-
-You should always use toasts to display results to the user, such as confirmations, results, errors, etc.
-
-Use the shad cn Sonner component as the toaster. For example:
-
-```
-import { toast } from "sonner"
-
-import { Button } from "@/components/ui/button"
-export function SonnerDemo() {
-  return (
-    <Button
-      variant="outline"
-      onClick={() =>
-        toast("Event has been created", {
-          description: "Sunday, December 03, 2023 at 9:00 AM",
-          action: {
-            label: "Undo",
-            onClick: () => console.log("Undo"),
-          },
-        })
-      }
-    >
-      Show Toast
-    </Button>
-  )
-}
-```
-
-Remember to import { toast } from "sonner". Usage: `toast("Event has been created.")`
-
-## Dialogs
-
-Always ensure your larger dialogs have a scroll in its content to ensure that its content fits the screen size. Make sure that the content is not cut off from the screen.
-
-Ideally, instead of using a new page, use a Dialog instead. 
-
-# Using the Convex backend
-
-You will be implementing the convex backend. Follow your knowledge of convex and the documentation to implement the backend.
-
-## The Convex Schema
-
-You must correctly follow the convex schema implementation.
-
-The schema is defined in `src/convex/schema.ts`.
-
-Do not include the `_id` and `_creationTime` fields in your queries (it is included by default for each table).
-Do not index `_creationTime` as it is indexed for you. Never have duplicate indexes.
-
-
-## Convex Actions: Using CRUD operations
-
-When running anything that involves external connections, you must use a convex action with "use node" at the top of the file.
-
-You cannot have queries or mutations in the same file as a "use node" action file. Thus, you must use pre-built queries and mutations in other files.
-
-You can also use the pre-installed internal crud functions for the database:
-
-```ts
-// in convex/users.ts
-import { crud } from "convex-helpers/server/crud";
-import schema from "./schema.ts";
-
-export const { create, read, update, destroy } = crud(schema, "users");
-
-// in some file, in an action:
-const user = await ctx.runQuery(internal.users.read, { id: userId });
-
-await ctx.runMutation(internal.users.update, {
-  id: userId,
-  patch: {
-    status: "inactive",
-  },
-});
-```
-
-
-## Common Convex Mistakes To Avoid
-
-When using convex, make sure:
-- Document IDs are referenced as `_id` field, not `id`.
-- Document ID types are referenced as `Id<"TableName">`, not `string`.
-- Document object types are referenced as `Doc<"TableName">`.
-- Keep schemaValidation to false in the schema file.
-- You must correctly type your code so that it passes the type checker.
-- You must handle null / undefined cases of your convex queries for both frontend and backend, or else it will throw an error that your data could be null or undefined.
-- Always use the `@/folder` path, with `@/convex/folder/file.ts` syntax for importing convex files.
-- This includes importing generated files like `@/convex/_generated/server`, `@/convex/_generated/api`
-- Remember to import functions like useQuery, useMutation, useAction, etc. from `convex/react`
-- NEVER have return type validators.
+<p align="center">
+  <strong>Built with 🍀 by Team FourLeaf</strong>
+</p>

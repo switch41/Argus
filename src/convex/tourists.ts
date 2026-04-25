@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { getCurrentUser } from "./users";
 import { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
 
 // Create tourist profile
 export const createProfile = mutation({
@@ -28,9 +29,32 @@ export const createProfile = mutation({
     const user = await getCurrentUser(ctx);
     if (!user) throw new Error("Not authenticated");
 
-    // Generate blockchain hash (simplified for demo)
-    const digitalIdHash = `DID_${user._id}_${Date.now()}`;
     const expiryDate = Date.now() + (args.plannedDuration * 24 * 60 * 60 * 1000);
+
+    // Attempt on-chain issuance first; fall back to local hash if Fabric not configured
+    let digitalIdHash: string;
+    try {
+      const emergencyContacts = {
+        emergencyContact1: args.emergencyContact1,
+        emergencyContact2: args.emergencyContact2 || null,
+      };
+      const emergencyContactsJson = JSON.stringify(emergencyContacts);
+
+      // Chaincode should return the digitalId hash/string
+      const res = await ctx.runAction(api.fabric.issueDigitalId, {
+        userId: user._id as unknown as string,
+        passportNumber: args.passportNumber,
+        nationality: args.nationality,
+        emergencyContactsJson,
+        itineraryJson: "{}",
+        expiryDateMs: expiryDate,
+      });
+      const data = (res as any)?.data as string | undefined;
+      digitalIdHash = data && data.length > 0 ? data : `DID_${user._id}_${Date.now()}`;
+    } catch (e) {
+      // If Fabric is unavailable or misconfigured, proceed with a local hash to not block UX
+      digitalIdHash = `DID_${user._id}_${Date.now()}`;
+    }
 
     const profileId = await ctx.db.insert("touristProfiles", {
       userId: user._id,
@@ -120,6 +144,64 @@ export const updateLocation = mutation({
       isManual: args.isManual,
       locationName: args.locationName,
     });
+
+    // --- AI ANOMALY DETECTION & GEO-FENCING ---
+    
+    // 1. Geofence Check
+    const activeFences = await ctx.db
+      .query("geoFences")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .collect();
+
+    for (const fence of activeFences) {
+      // Simplified point-in-polygon check (bounding box for demo)
+      const lats = fence.coordinates.map(c => c.latitude);
+      const lons = fence.coordinates.map(c => c.longitude);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLon = Math.min(...lons);
+      const maxLon = Math.max(...lons);
+
+      const inFence = args.latitude >= minLat && args.latitude <= maxLat && 
+                      args.longitude >= minLon && args.longitude <= maxLon;
+
+      if (inFence && (fence.zoneType === "restricted" || fence.zoneType === "high_risk")) {
+        await ctx.runMutation(api.alerts.triggerPanicAlert, {
+          latitude: args.latitude,
+          longitude: args.longitude,
+          description: `GEOFENCE VIOLATION: Tourist entered ${fence.zoneType} zone: ${fence.name}`,
+        });
+        return { success: true, alertReason: "geofence_violation" };
+      }
+    }
+
+    // 2. Itinerary Deviation Check
+    const activeItinerary = await ctx.db
+      .query("itineraries")
+      .withIndex("by_tourist", (q) => q.eq("touristId", profile._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .first();
+
+    if (activeItinerary && activeItinerary.plannedRoute.length > 0) {
+      // Check if tourist is moving away from planned route (Simplified)
+      const nearbyStops = activeItinerary.plannedRoute.filter(stop => {
+        const dist = Math.abs(stop.latitude - args.latitude) + Math.abs(stop.longitude - args.longitude);
+        return dist < 0.05; // ~5km
+      });
+
+      if (nearbyStops.length === 0) {
+        // Log deviation as a medium alert (not full panic)
+        await ctx.db.insert("alerts", {
+          touristId: profile._id,
+          alertType: "deviation",
+          severity: "medium",
+          title: "Route Deviation Detected",
+          description: "Tourist is outside the planned itinerary buffer zone.",
+          location: { latitude: args.latitude, longitude: args.longitude },
+          isResolved: false,
+        });
+      }
+    }
 
     return { success: true };
   },
@@ -346,17 +428,50 @@ export const verifyDigitalId = query({
 
     if (!profile) return null;
 
-    const isValid = profile.isActive && profile.expiryDate > Date.now();
+    // Check on-chain status (best-effort)
+    let onChainValid: boolean | null = null;
+    let onChainRaw: string | null = null;
+    try {
+      const res = await ctx.runAction(api.fabric.verifyDigitalIdOnChain, {
+        digitalIdHash: args.digitalIdHash,
+      });
+      const data = (res as any)?.data as string | undefined;
+      onChainRaw = data ?? null;
+      if (data) {
+        // Accept "true"/"false" or JSON { valid: boolean }
+        const normalized = data.trim().toLowerCase();
+        if (normalized === "true" || normalized === "false") {
+          onChainValid = normalized === "true";
+        } else {
+          try {
+            const parsed = JSON.parse(data);
+            if (typeof parsed?.valid === "boolean") onChainValid = parsed.valid;
+          } catch {
+            onChainValid = null;
+          }
+        }
+      }
+    } catch {
+      onChainValid = null;
+    }
+
+    const localValid = profile.isActive && profile.expiryDate > Date.now();
+    const reconciledValid = onChainValid === null ? localValid : (localValid && onChainValid);
 
     return {
       _id: profile._id,
       nationality: profile.nationality,
       isActive: profile.isActive,
       expiryDate: profile.expiryDate,
-      isValid,
+      isValid: reconciledValid,
       validityPeriod: {
         start: profile._creationTime,
         end: profile.expiryDate,
+      },
+      onChain: {
+        checked: onChainValid !== null,
+        valid: onChainValid,
+        raw: onChainRaw,
       },
     };
   },

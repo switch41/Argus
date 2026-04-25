@@ -110,12 +110,6 @@ importers:
       '@types/three':
         specifier: ^0.177.0
         version: 0.177.0
-      '@zumer/snapdom':
-        specifier: ^1.7.1
-        version: 1.7.1
-      axios:
-        specifier: ^1.9.0
-        version: 1.9.0
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2033,9 +2027,6 @@ packages:
 
   '@webgpu/types@0.1.61':
     resolution: {integrity: sha512-w2HbBvH+qO19SB5pJOJFKs533CdZqxl3fcGonqL321VHkW7W/iBo6H8bjDy6pr/+pbMwIu5dnuaAxH7NxBqUrQ==}
-
-  '@zumer/snapdom@1.7.1':
-    resolution: {integrity: sha512-WMsxL4SjqwvKgdgQOfO2Yt6ahMPDQLvpsXkcHrCCqkdx6Wxokaa0UGbotanH+bYFGUavtUJpDJ6CEBMDIBJQkA==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -5217,8 +5208,6 @@ snapshots:
       - supports-color
 
   '@webgpu/types@0.1.61': {}
-
-  '@zumer/snapdom@1.7.1': {}
 
   acorn-jsx@5.3.2(acorn@8.14.1):
     dependencies:

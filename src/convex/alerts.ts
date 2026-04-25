@@ -54,6 +54,48 @@ export const triggerPanicAlert = mutation({
       priority: "urgent",
     });
 
+    // BROADCAST TO NEARBY USERS AND OFFICIALS
+    // Fetch nearby users (Simplified: all active tourists for demo, or based on coords)
+    const activeTourists = await ctx.db
+      .query("touristProfiles")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    for (const t of activeTourists) {
+      if (t._id === profile._id) continue;
+      await ctx.db.insert("notifications", {
+        userId: t.userId,
+        title: "EMERGENCY NEARBY",
+        message: `A fellow traveler needs help nearby: ${args.description || "Panic alert activated"}`,
+        type: "emergency",
+        isRead: false,
+        relatedAlertId: alertId,
+      });
+    }
+
+    // Inform nearby officials
+    const officials = await ctx.db
+      .query("users")
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("role"), "police"),
+          q.eq(q.field("role"), "tourism_official"),
+          q.eq(q.field("role"), "admin")
+        )
+      )
+      .collect();
+
+    for (const off of officials) {
+      await ctx.db.insert("notifications", {
+        userId: off._id,
+        title: "SOS ALERT - ACTION REQUIRED",
+        message: `${user.name || "A tourist"} has activated SOS. Immediate response requested.`,
+        type: "emergency",
+        isRead: false,
+        relatedAlertId: alertId,
+      });
+    }
+
     return { alertId, firNumber };
   },
 });

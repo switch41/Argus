@@ -7,8 +7,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Badge } from "@/components/ui/badge";
 
 export default function Profile() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -18,6 +19,14 @@ export default function Profile() {
   const getUserWalletAction = useAction(api.fabric.getUserWallet);
   const linkWalletAction = useAction(api.fabric.linkWallet);
   const createUserProfileAction = useAction(api.fabric.createUserProfile);
+  const verifyOnChainAction = useAction(api.fabric.verifyDigitalIdOnChain);
+  const currentProfile = useQuery(api.tourists.getCurrentProfile);
+  const verified = useQuery(
+    api.tourists.verifyDigitalId,
+    currentProfile?.digitalIdHash ? { digitalIdHash: currentProfile.digitalIdHash } : "skip"
+  );
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [onChainNow, setOnChainNow] = useState<{ checked: boolean; valid: boolean | null; raw?: string } | null>(null);
 
   const [walletAddress, setWalletAddress] = useState("");
   const [linkedWallet, setLinkedWallet] = useState<string | null>(null);
@@ -99,6 +108,36 @@ export default function Profile() {
       toast.error("Failed to link wallet");
     } finally {
       setIsLinking(false);
+    }
+  };
+
+  const handleVerifyDigitalId = async () => {
+    if (!currentProfile?.digitalIdHash) {
+      toast.error("No Digital ID found on your profile");
+      return;
+    }
+    try {
+      setVerifyLoading(true);
+      const res = await verifyOnChainAction({ digitalIdHash: currentProfile.digitalIdHash });
+      const data = (res as any)?.data as string | undefined;
+      let valid: boolean | null = null;
+      if (data) {
+        const normalized = data.trim().toLowerCase();
+        if (normalized === "true" || normalized === "false") valid = normalized === "true";
+        else {
+          try {
+            const parsed = JSON.parse(data);
+            if (typeof parsed?.valid === "boolean") valid = parsed.valid;
+          } catch {}
+        }
+      }
+      setOnChainNow({ checked: true, valid, raw: data });
+      toast.success("Verification complete");
+    } catch (e) {
+      setOnChainNow({ checked: true, valid: null });
+      toast.error("Verification failed");
+    } finally {
+      setVerifyLoading(false);
     }
   };
 
@@ -196,6 +235,62 @@ export default function Profile() {
                 Create On-Chain Profile
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Digital ID */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Digital Tourist ID</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-muted-foreground">Digital ID Hash</div>
+                <div className="font-mono text-xs break-all">
+                  {currentProfile?.digitalIdHash || "—"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-muted-foreground">Status</div>
+                {verified ? (
+                  verified.isValid ? (
+                    <Badge className="bg-green-600 hover:bg-green-600 text-white">Valid</Badge>
+                  ) : (
+                    <Badge className="bg-red-600 hover:bg-red-600 text-white">Invalid</Badge>
+                  )
+                ) : (
+                  <Badge className="bg-gray-400 hover:bg-gray-400 text-white">Unknown</Badge>
+                )}
+                {verified?.onChain?.checked && (
+                  verified.onChain.valid ? (
+                    <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">On-Chain OK</Badge>
+                  ) : (
+                    <Badge className="bg-amber-600 hover:bg-amber-600 text-white">On-Chain Mismatch</Badge>
+                  )
+                )}
+                {onChainNow?.checked && (
+                  onChainNow.valid ? (
+                    <Badge className="bg-emerald-700 hover:bg-emerald-700 text-white">Just Verified</Badge>
+                  ) : (
+                    <Badge className="bg-rose-700 hover:bg-rose-700 text-white">Just Failed</Badge>
+                  )
+                )}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button onClick={handleVerifyDigitalId} disabled={verifyLoading || !currentProfile?.digitalIdHash}>
+                {verifyLoading ? "Verifying..." : "Verify Now"}
+              </Button>
+              {verified?.validityPeriod && (
+                <Badge variant="outline">
+                  Valid until {new Date(verified.validityPeriod.end).toLocaleString()}
+                </Badge>
+              )}
+            </div>
+            {verified?.onChain?.raw && (
+              <pre className="bg-muted p-3 rounded text-xs overflow-auto max-h-60">{verified.onChain.raw}</pre>
+            )}
           </CardContent>
         </Card>
       </div>
