@@ -1,4 +1,4 @@
--- Safe Travel ID Supabase Schema (idempotent)
+-- Argus Supabase Schema (idempotent)
 -- This file is safe to re-run in Supabase SQL Editor.
 
 -- Extensions

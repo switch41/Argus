@@ -178,7 +178,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               <Shield className="h-8 w-8 text-primary-foreground" />
             </div>
             <div className="space-y-1">
-              <h1 className="text-3xl font-display font-bold tracking-tight text-primary">SafeTravel ID</h1>
+              <h1 className="text-3xl font-display font-bold tracking-tight text-primary">Argus</h1>
               <p className="text-muted-foreground font-medium">Secure Portal Access</p>
             </div>
           </div>

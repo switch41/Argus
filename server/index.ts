@@ -13,6 +13,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.json({ message: 'Fabric Gateway is running' });
+});
+
 const PORT = 3001;
 
 // Fabric Configuration (Mocked for now, but structures are ready for SDK)

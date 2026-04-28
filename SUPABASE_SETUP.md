@@ -1,4 +1,4 @@
-# Supabase Setup (Safe Travel ID)
+# Supabase Setup (Argus)
 
 Follow these steps in order.
 
@@ -47,7 +47,7 @@ pnpm dev
 Optional backend gateway (for Fabric mock endpoints):
 
 ```bash
-pnpm server
+pnpm run server
 ```
 
 ## 6) First login sanity check

@@ -71,7 +71,7 @@ export default function Landing() {
               <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
                 <Shield className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="font-display text-xl font-bold tracking-tight text-primary">SafeTravel ID</span>
+              <span className="font-display text-xl font-bold tracking-tight text-primary">Argus</span>
             </div>
             <div className="flex items-center gap-4">
               {isAuthenticated ? (
@@ -133,6 +133,7 @@ export default function Landing() {
               <Button
                 size="lg"
                 variant="outline"
+                onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
                 className="h-14 px-10 text-lg font-bold border-2 hover:bg-muted"
               >
                 Explore Safety Network
@@ -274,10 +275,10 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
-            <span className="font-display font-bold text-lg">SafeTravel ID</span>
+            <span className="font-display font-bold text-lg">Argus</span>
           </div>
           <div className="text-sm text-muted-foreground font-medium">
-            © 2026 SAFETRAVEL INFRASTRUCTURE. ALL RIGHTS RESERVED.
+            © 2026 ARGUS INFRASTRUCTURE. ALL RIGHTS RESERVED.
           </div>
           <div className="flex items-center gap-6">
             <span className="label-caps text-[10px] text-muted-foreground hover:text-primary cursor-pointer transition-colors">Privacy</span>

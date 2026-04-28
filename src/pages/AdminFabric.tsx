@@ -198,7 +198,7 @@ export default function AdminFabric() {
                     </CardHeader>
                     <CardContent className="flex-1 p-0 flex flex-col">
                       <div className="flex-1 overflow-auto bg-[#0a0f1d] text-[#0066FF] font-mono text-[11px] p-6 leading-relaxed selection:bg-secondary selection:text-white">
-                        <div className="opacity-50 mb-2">SAFE-TRAVEL-ID HYPERLEDGER CLI V1.0.4</div>
+                        <div className="opacity-50 mb-2">ARGUS HYPERLEDGER CLI V1.0.4</div>
                         <div className="text-secondary mb-4">AUTHENTICATED AS SYSTEM_ADMIN_ROOT</div>
                         <pre className="whitespace-pre-wrap">
                           {result || "> Initializing secure gateway..."}

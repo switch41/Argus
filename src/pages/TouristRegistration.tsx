@@ -172,7 +172,7 @@ export default function TouristRegistration() {
           <div className="label-caps !text-[11px] text-secondary font-black tracking-[0.3em]">DIGITAL TOURIST ID PORTAL</div>
           <h2 className="text-4xl font-display font-bold text-primary tracking-tighter">Registration of Movement</h2>
           <p className="text-muted-foreground font-medium max-w-2xl">
-            Complete your biometric and itinerary profile to generate a blockchain-secured SafeTravel ID. This data is encrypted and only accessible by authorized safety officials during active emergency signals.
+            Complete your biometric and itinerary profile to generate a blockchain-secured Argus ID. This data is encrypted and only accessible by authorized safety officials during active emergency signals.
           </p>
         </div>
 

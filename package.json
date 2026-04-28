@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node --import tsx server/index.ts",
+    "server": "tsx server/index.ts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "format": "prettier --write .",

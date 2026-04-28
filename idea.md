@@ -1,4 +1,4 @@
-# Safe Travel ID — SIH 2025 Pitch Deck
+# Argus — SIH 2025 Pitch Deck
 
 ---
 
@@ -6,7 +6,7 @@
 **Proposed Solution (Describe your Idea/Solution/Prototype)**  
 
 ### Detailed explanation of the proposed solution  
-- **Safe Travel ID**: a unified tourist safety platform with blockchain-secured Digital ID, real-time monitoring, and rapid SOS routed to authorities.  
+- **Argus**: a unified tourist safety platform with blockchain-secured Digital ID, real-time monitoring, and rapid SOS routed to authorities.  
 
 ### How it addresses the problem  
 - Fast, reliable help (**SOS + case handling**)  

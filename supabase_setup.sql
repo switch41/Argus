@@ -1,4 +1,4 @@
--- Safe Travel ID - Supabase bootstrap SQL (idempotent)
+-- Argus - Supabase bootstrap SQL (idempotent)
 -- Run this in Supabase SQL Editor after creating a new project.
 
 -- Extensions
