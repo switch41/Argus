@@ -1,18 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
-import { useMutation } from "convex/react";
+import { useSupabase } from "@/components/auth/SupabaseProvider";
 import { AlertTriangle, MapPin, Loader2, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 export default function Emergency() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, supabase } = useSupabase();
   const navigate = useNavigate();
-  const triggerPanic = useMutation(api.alerts.triggerPanicAlert);
 
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [desc, setDesc] = useState("");
@@ -45,11 +42,53 @@ export default function Emergency() {
     }
     setIsSending(true);
     try {
-      const res = await triggerPanic({
-        latitude: coords.lat,
-        longitude: coords.lon,
-        description: desc || undefined,
-      });
+      // 1. Get Tourist Profile ID
+      const { data: profile } = await supabase
+        .from('tourist_profiles')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profile) throw new Error("Tourist profile not found");
+
+      // 2. Insert Alert
+      const { data: alertRecord, error: alertError } = await supabase
+        .from('alerts')
+        .insert({
+          tourist_id: profile.id,
+          alert_type: 'panic',
+          severity: 'critical',
+          title: 'SOS: PANIC SIGNAL TRIGGERED',
+          description: desc || 'Emergency button pressed',
+          location: { latitude: coords.lat, longitude: coords.lon },
+          is_resolved: false
+        })
+        .select("id")
+        .single();
+
+      if (alertError) throw alertError;
+
+      // 3. Insert Signal
+      await supabase
+        .from('device_signals')
+        .insert({
+          tourist_id: profile.id,
+          type: 'sos',
+          payload: { latitude: coords.lat, longitude: coords.lon, description: desc }
+        });
+
+      // 4. Create user notification so SOS appears in Notification center.
+      await supabase
+        .from("notifications")
+        .insert({
+          user_id: user?.id,
+          title: "SOS Sent",
+          message: "Your panic signal has been broadcast to safety authorities.",
+          type: "alert",
+          related_alert_id: alertRecord?.id ?? null,
+          is_read: false,
+        });
+
       toast.success("Emergency alert sent!");
       navigate("/dashboard");
     } catch (e) {

@@ -1,34 +1,103 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
-import { useMutation, useQuery } from "convex/react";
+import { useSupabase } from "@/components/auth/SupabaseProvider";
 import { Bell, CheckCheck, ArrowLeft, Shield, Clock, Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 export default function NotificationsPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, supabase } = useSupabase();
   const navigate = useNavigate();
 
-  const notifications = useQuery(api.notifications.getMyNotifications);
-  const markRead = useMutation(api.notifications.markRead);
-  const markAllRead = useMutation(api.notifications.markAllRead);
+  const [notifications, setNotifications] = useState<any[] | null>(null);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    const { data: notificationRows } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    const { data: profile } = await supabase
+      .from("tourist_profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    let alertRows: any[] = [];
+    if (profile?.id) {
+      const { data } = await supabase
+        .from("alerts")
+        .select("id, title, description, created_at, alert_type, severity")
+        .eq("tourist_id", profile.id)
+        .order("created_at", { ascending: false });
+      alertRows = data || [];
+    }
+
+    const normalizedNotifications = (notificationRows || []).map((n: any) => ({
+      ...n,
+      _source: "notifications",
+    }));
+
+    const alertBackfilledSignals = alertRows.map((a: any) => ({
+      id: `alert-${a.id}`,
+      title: a.title || "Emergency Signal",
+      message: a.description || `SOS ${a.alert_type || "alert"} recorded.`,
+      created_at: a.created_at,
+      is_read: false,
+      related_alert_id: a.id,
+      type: "alert",
+      _source: "alerts",
+    }));
+
+    const merged = [...normalizedNotifications, ...alertBackfilledSignals].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    setNotifications(merged);
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [user, supabase]);
+
+  const markRead = async (id: string) => {
+    // Backfilled alert rows are derived records and cannot be marked read.
+    if (id.startsWith("alert-")) return;
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id);
+      if (error) throw error;
+      fetchNotifications();
+    } catch {
+      toast.error("Failed to mark as read.");
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user?.id)
+        .eq('is_read', false);
+      if (error) throw error;
+      toast.success("All notifications marked as read.");
+      fetchNotifications();
+    } catch {
+      toast.error("Failed to mark all as read.");
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) navigate("/auth");
   }, [isAuthenticated, navigate]);
 
-  const markAll = async () => {
-    try {
-      await markAllRead({});
-      toast.success("All notifications marked as read.");
-    } catch {
-      toast.error("Failed to mark all as read.");
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background font-sans flex flex-col">
@@ -52,7 +121,7 @@ export default function NotificationsPage() {
               </h1>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={markAll} className="font-black label-caps text-[10px] tracking-widest bg-secondary/10 text-secondary hover:bg-secondary/20 h-10 px-4">
+          <Button variant="ghost" size="sm" onClick={() => markAllRead()} className="font-black label-caps text-[10px] tracking-widest bg-secondary/10 text-secondary hover:bg-secondary/20 h-10 px-4">
             <CheckCheck className="h-4 w-4 mr-2" />
             FLUSH BUFFER
           </Button>
@@ -90,37 +159,31 @@ export default function NotificationsPage() {
               <div className="divide-y divide-border">
                 {notifications.map((n: any) => (
                   <div
-                    key={n._id}
-                    className={`p-6 md:p-8 flex items-start justify-between gap-6 transition-colors hover:bg-muted/10 ${n.isRead ? "opacity-60" : "bg-secondary/[0.03]"
+                    key={n.id}
+                    className={`p-6 md:p-8 flex items-start justify-between gap-6 transition-colors hover:bg-muted/10 ${n.is_read ? "opacity-60" : "bg-secondary/[0.03]"
                       }`}
                   >
                     <div className="flex items-start gap-5">
-                      <div className={`mt-1 p-2.5 rounded-lg ${n.isRead ? "bg-muted text-muted-foreground" : "bg-secondary text-white shadow-lg"}`}>
+                      <div className={`mt-1 p-2.5 rounded-lg ${n.is_read ? "bg-muted text-muted-foreground" : "bg-secondary text-white shadow-lg"}`}>
                         <Bell className="h-5 w-5" />
                       </div>
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-3">
                           <h3 className="font-display font-bold text-lg tracking-tight text-primary uppercase">{n.title}</h3>
-                          {!n.isRead && <Badge className="bg-secondary text-white border-none label-caps text-[8px] font-black h-4 px-2">UNREAD</Badge>}
+                          {!n.is_read && <Badge className="bg-secondary text-white border-none label-caps text-[8px] font-black h-4 px-2">UNREAD</Badge>}
                         </div>
                         <p className="text-muted-foreground font-medium text-sm leading-relaxed max-w-xl">{n.message}</p>
                         <div className="flex items-center gap-2 text-[9px] font-black label-caps text-muted-foreground/60 pt-2">
                           <Clock className="h-3 w-3" />
-                          EPOCH: {new Date(n._creationTime).toLocaleTimeString()} // {new Date(n._creationTime).toLocaleDateString()}
+                          EPOCH: {new Date(n.created_at).toLocaleTimeString()} // {new Date(n.created_at).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
-                    {!n.isRead && (
+                    {!n.is_read && !String(n.id).startsWith("alert-") && (
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={async () => {
-                          try {
-                            await markRead({ notificationId: n._id as any });
-                          } catch {
-                            toast.error("Failed to mark as read.");
-                          }
-                        }}
+                        onClick={() => markRead(n.id)}
                         className="font-black label-caps text-[9px] tracking-widest text-secondary hover:bg-secondary/10"
                       >
                         ACKNOWLEDGE

@@ -1,37 +1,70 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { api } from "@/convex/_generated/api";
-import { useMutation, useQuery } from "convex/react";
+import { useSupabase } from "@/components/auth/SupabaseProvider";
 import { MessageSquare } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function CaseDetailDialog({ caseId }: { caseId: string }) {
   const [open, setOpen] = useState(false);
-  const case_ = useQuery(api.cases.get, { caseId: caseId as any });
-  const messages = useQuery(api.messages.listByCase, { caseId: caseId as any });
+  const { user, supabase } = useSupabase();
+  const [case_, setCase] = useState<any>(null);
+  const [messages, setMessages] = useState<any[]>([]);
   const [note, setNote] = useState("");
-  const addNote = useMutation(api.cases.addNote);
-  const postMessage = useMutation(api.messages.postToCase);
+
+  const fetchData = async () => {
+    if (!caseId) return;
+    const { data: c } = await supabase
+      .from('cases')
+      .select('*')
+      .eq('id', caseId)
+      .single();
+    setCase(c);
+
+    const { data: m } = await supabase
+      .from('case_messages')
+      .select('*')
+      .eq('case_id', caseId)
+      .order('created_at', { ascending: true });
+    setMessages(m || []);
+  };
+
+  useEffect(() => {
+    if (open) fetchData();
+  }, [open, caseId, supabase]);
 
   const handleAddNote = async () => {
-    if (!note.trim()) return;
+    if (!note.trim() || !case_) return;
     try {
-      await addNote({ caseId: caseId as any, note });
+      const newTimeline = [...(case_.timeline || []), { note, t: Date.now() }];
+      const { error } = await supabase
+        .from('cases')
+        .update({ timeline: newTimeline })
+        .eq('id', caseId);
+      if (error) throw error;
       setNote("");
       toast.success("Note added");
+      fetchData();
     } catch {
       toast.error("Failed to add note");
     }
   };
 
   const handlePostMessage = async () => {
-    if (!note.trim()) return;
+    if (!note.trim() || !user) return;
     try {
-      await postMessage({ caseId: caseId as any, body: note });
+      const { error } = await supabase
+        .from('case_messages')
+        .insert({
+          case_id: caseId,
+          user_id: user.id,
+          body: note
+        });
+      if (error) throw error;
       setNote("");
       toast.success("Message sent");
+      fetchData();
     } catch {
       toast.error("Failed to send message");
     }
@@ -59,10 +92,10 @@ export default function CaseDetailDialog({ caseId }: { caseId: string }) {
           ))}
 
           {messages?.map((msg: any) => (
-            <div key={msg._id} className="p-2 border rounded">
+            <div key={msg.id} className="p-2 border rounded">
               <div className="text-sm">{msg.body}</div>
               <div className="text-xs text-muted-foreground">
-                {new Date(msg.t).toLocaleString()}
+                {new Date(msg.created_at).toLocaleString()}
               </div>
             </div>
           ))}

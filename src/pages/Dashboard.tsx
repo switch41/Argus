@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSupabase } from "@/components/auth/SupabaseProvider";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Shield,
@@ -15,12 +15,12 @@ import {
   Globe,
   Wifi,
   WifiOff,
-  ArrowRight
+  ArrowRight,
+  CloudSun,
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useMutation } from "convex/react";
 import { toast } from "sonner";
 import { useOfflineSync, OfflineManager } from "@/lib/offline-manager";
 /* removed unused select imports */
@@ -37,33 +37,126 @@ import AnalyticsCard from "@/components/dashboard/AnalyticsCard";
 import AdvisoryDialog from "@/components/dashboard/AdvisoryDialog";
 
 export default function Dashboard() {
-  const { isLoading, isAuthenticated, user, signOut } = useAuth();
+  const { isLoading, isAuthenticated, isAnonymous, user, signOut } = useAuth();
+  const { supabase } = useSupabase();
   const navigate = useNavigate();
 
-  // Move role flags before queries so we can conditionally call them
-  // Layer-based role detection
+  // Role detection
   const isTourist = user?.role === "tourist" || user?.role === "user" || !user?.role;
   const isOfficer = user?.role === "police" || user?.role === "tourism_official";
   const isAdmin = user?.role === "admin";
   const isOfficial = isOfficer || isAdmin;
+  const canManageTacticalAlerts = isAdmin || user?.role === "tourism_official";
 
-  // Queries (conditionally run official-only queries)
-  const touristProfile = useQuery(api.tourists.getCurrentProfile);
-  const safetyScore = useQuery(api.tourists.getSafetyScore);
-  const myAlerts = useQuery(api.alerts.getMyAlerts);
-  const myItineraries = useQuery(api.tourists.listMyItineraries);
-  const areaRisks = useQuery(api.tourists.getItineraryAreaRisks);
-  const allAlerts = useQuery(api.alerts.getAllActiveAlerts, isOfficial ? {} : "skip");
-  const alertStats = useQuery(api.alerts.getAlertStats, isOfficial ? {} : "skip");
-  const allTourists = useQuery(api.tourists.getAllActiveTourists, isOfficial ? {} : "skip");
-  const assignAlert = useMutation(api.alerts.assignAlert);
-  const officers = useQuery(api.users.listOfficials, isOfficial ? {} : "skip");
-  /* removed unused queries: heatmapData, iotSignals, openCases, assignedCases, analytics, advisories */
+  // State for data
+  const [touristProfile, setTouristProfile] = useState<any>(null);
+  const [safetyScore, setSafetyScore] = useState<any>(null);
+  const [myAlerts, setMyAlerts] = useState<any[]>([]);
+  const [myItineraries, setMyItineraries] = useState<any[]>([]);
+  const [areaRisks, setAreaRisks] = useState<any[]>([]);
+  const [allAlerts, setAllAlerts] = useState<any[]>([]);
+  const [alertStats, setAlertStats] = useState<any>({ active: 0, resolved: 0, averageResponseTime: 0 });
+  const [allTourists, setAllTourists] = useState<any[]>([]);
+  const [officers, setOfficers] = useState<any[]>([]);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [weather, setWeather] = useState<{ tempC: number; windKph: number; code: number } | null>(null);
 
-  /* removed unused mutations: updateCaseStatus, createAdvisory */
+  // Real-time Subscriptions & Initial Fetch
+  useEffect(() => {
+    if (!user) return;
 
-  /* removed unused mutations: addCaseNote, postCaseMessage */
-  const triggerPanic = useMutation(api.alerts.triggerPanicAlert);
+    const fetchData = async () => {
+      // 1. Current Profile (for tourists)
+      if (isTourist) {
+        const { data, error } = await supabase
+          .from('tourist_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        // Keep existing state if the profile query errors to avoid collapsing the UI.
+        if (!error) {
+          // Keep previously loaded profile to prevent UI flicker/disappearance
+          // during transient empty refetches after real-time updates.
+          setTouristProfile((prev: any) => data ?? prev ?? null);
+        }
+
+        const profileId = data?.id ?? touristProfile?.id;
+        if (profileId) {
+          const { data: touristAlerts } = await supabase
+            .from("alerts")
+            .select("*")
+            .eq("tourist_id", profileId)
+            .order("created_at", { ascending: false });
+          setMyAlerts(touristAlerts || []);
+        } else if (!error) {
+          setMyAlerts([]);
+        }
+      }
+
+      // 2. Active Alerts (Official)
+      if (isOfficial) {
+        const { data: alerts } = await supabase
+          .from('alerts')
+          .select('*, tourist_profiles(*)')
+          .order('created_at', { ascending: false });
+        setAllAlerts(alerts || []);
+
+        const { data: tourists } = await supabase
+          .from('tourist_profiles')
+          .select('*')
+          .eq('is_active', true);
+        setAllTourists(tourists || []);
+
+        const { data: officials } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('role', ['police', 'tourism_official', 'responder']);
+        setOfficers(officials || []);
+      }
+    };
+
+    fetchData();
+
+    // Setup Real-time for Alerts
+    const alertsChannel = supabase
+      .channel('public:alerts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(alertsChannel);
+    };
+  }, [user, isTourist, isOfficial, supabase]);
+
+  const triggerPanic = async (args: any) => {
+    if (!user || !touristProfile) return;
+    const { error } = await supabase
+      .from('alerts')
+      .insert({
+        tourist_id: touristProfile.id,
+        alert_type: 'panic',
+        severity: 'critical',
+        title: 'Emergency SOS',
+        description: args.description || 'User triggered manual emergency signal.',
+        location: { latitude: args.latitude, longitude: args.longitude },
+        is_resolved: false
+      });
+    if (error) throw error;
+  };
+
+  const assignAlert = async (alertId: string, officerId: string) => {
+    const { error } = await supabase
+      .from('alerts')
+      .update({ assigned_to: officerId })
+      .eq('id', alertId);
+    if (error) throw error;
+  };
 
   /*
   // Use offline sync
@@ -87,6 +180,51 @@ export default function Dashboard() {
       return;
     }
     navigate("/emergency");
+  };
+
+  const fetchWeather = async (lat: number, lon: number) => {
+    try {
+      setWeatherLoading(true);
+      setWeatherError(null);
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m&wind_speed_unit=kmh`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch weather");
+      const data = await res.json();
+      setWeather({
+        tempC: data?.current?.temperature_2m ?? 0,
+        windKph: data?.current?.wind_speed_10m ?? 0,
+        code: data?.current?.weather_code ?? 0,
+      });
+    } catch {
+      setWeatherError("Unable to load weather for your area.");
+      setWeather(null);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!("geolocation" in navigator)) {
+      setWeatherError("Geolocation not supported.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
+      () => setWeatherError("Location permission denied."),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+  }, [isAuthenticated]);
+
+  const describeWeatherCode = (code: number) => {
+    if ([0].includes(code)) return "Clear";
+    if ([1, 2, 3].includes(code)) return "Partly Cloudy";
+    if ([45, 48].includes(code)) return "Fog";
+    if ([51, 53, 55, 61, 63, 65].includes(code)) return "Rain";
+    if ([71, 73, 75, 77].includes(code)) return "Snow";
+    if ([80, 81, 82].includes(code)) return "Showers";
+    if ([95, 96, 99].includes(code)) return "Thunderstorm";
+    return "Weather";
   };
 
   useEffect(() => {
@@ -149,6 +287,11 @@ export default function Dashboard() {
                   <p className="text-[10px] label-caps text-muted-foreground">
                     Active Session: {user.name || user.email}
                   </p>
+                  {isAnonymous && (
+                    <span className="text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded border border-amber-300 bg-amber-100 text-amber-800">
+                      Guest Mode
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -159,7 +302,7 @@ export default function Dashboard() {
                 onClick={() => navigate("/notifications")}
                 className="hidden md:flex font-bold label-caps text-[10px]"
               >
-                Alerts {(myAlerts && myAlerts.length > 0) ? `(${myAlerts.length})` : ""}
+                Signals
               </Button>
               <Button
                 variant="outline"
@@ -169,6 +312,16 @@ export default function Dashboard() {
               >
                 Profile
               </Button>
+              {(isAdmin || user?.role === "tourism_official") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/high-authority")}
+                  className="hidden md:flex font-bold label-caps text-[10px] border-secondary text-secondary hover:bg-secondary hover:text-white"
+                >
+                  Strategic View
+                </Button>
+              )}
               <Button
                 variant="default"
                 size="sm"
@@ -199,6 +352,71 @@ export default function Dashboard() {
             {/* Advisory Banners */}
             <AdvisoryBanners />
 
+            <Card className="border border-border bg-card shadow-none overflow-hidden">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-display text-lg">Geofencing Spots</CardTitle>
+              </CardHeader>
+              <CardContent className="h-[340px]">
+                <HeatmapCard />
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="md:col-span-2 border border-border bg-card shadow-none overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded bg-secondary flex items-center justify-center">
+                        <CloudSun className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="label-caps !text-muted-foreground mb-1">Local Travel Conditions</div>
+                        <div className="text-xl font-bold tracking-tight">
+                          {weatherLoading ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" /> Analyzing...
+                            </span>
+                          ) : weather ? (
+                            <>
+                              {describeWeatherCode(weather.code)} •{" "}
+                              <span className="mono-data !text-primary">{Math.round(weather.tempC)}°C</span>
+                            </>
+                          ) : (
+                            <span className="text-destructive font-medium">{weatherError || "Service Offline"}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="h-8 w-[1px] bg-border hidden sm:block" />
+                      <div className="flex flex-col items-end">
+                        <div className="label-caps !text-[10px] text-muted-foreground mb-1">Wind Speed</div>
+                        <div className="mono-data text-primary">
+                          {weather?.windKph ? `${Math.round(weather.windKph)} KM/H` : "--"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card
+                className="border-2 border-accent bg-accent/5 shadow-none overflow-hidden hover:bg-accent/10 transition-colors cursor-pointer group"
+                onClick={onPanicClick}
+              >
+                <CardContent className="p-6 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="label-caps text-accent font-bold">Emergency Signal</div>
+                    <AlertTriangle className="h-5 w-5 text-accent animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold tracking-tight mb-1 text-accent">Quick SOS Trigger</div>
+                    <p className="text-sm text-accent/80">Instant authority dispatch</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {!touristProfile ? (
               <Card className="border-2 border-dashed border-border bg-muted/50">
                 <CardContent className="py-12 text-center space-y-4">
@@ -211,7 +429,17 @@ export default function Dashboard() {
                       Provision your blockchain-secured digital tourist ID to activate full safety monitoring and emergency services.
                     </p>
                   </div>
-                  <Button onClick={() => navigate("/register")} className="font-bold h-12 px-8 bg-primary hover:bg-primary/90 glow-primary">
+                  <Button
+                    onClick={() => {
+                      if (isAnonymous) {
+                        toast.error("Please sign in with email to create a Digital ID.");
+                        navigate("/auth");
+                        return;
+                      }
+                      navigate("/register");
+                    }}
+                    className="font-bold h-12 px-8 bg-primary hover:bg-primary/90 glow-primary"
+                  >
                     Verify Identity Now
                   </Button>
                 </CardContent>
@@ -413,7 +641,7 @@ export default function Dashboard() {
                 {allAlerts && allAlerts.length > 0 ? (
                   <div className="divide-y divide-border">
                     {allAlerts.slice(0, 10).map((alert: any) => (
-                      <div key={alert._id} className="group hover:bg-muted/20 transition-colors p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div key={alert.id} className="group hover:bg-muted/20 transition-colors p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
                             <span className={`label-caps !text-[9px] px-2 py-0.5 rounded text-white ${alert.severity === "critical" ? "bg-accent" :
@@ -423,60 +651,62 @@ export default function Dashboard() {
                             </span>
                             <span className="font-bold text-primary">{alert.title}</span>
                             <span className="text-[10px] mono-data text-muted-foreground">
-                              {new Date(alert._creationTime).toLocaleTimeString()}
+                              {new Date(alert.created_at).toLocaleTimeString()}
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground max-w-2xl">{alert.description}</p>
                         </div>
-                        <div className="flex items-center gap-2 self-end md:self-auto">
-                          <Button size="sm" variant="ghost" className="font-bold label-caps !text-[9px]" onClick={() => navigate(`/alert/${alert._id}`)}>
-                            Tactical View
-                          </Button>
+                        {canManageTacticalAlerts && (
+                          <div className="flex items-center gap-2 self-end md:self-auto">
+                            <Button size="sm" variant="ghost" className="font-bold label-caps !text-[9px]" onClick={() => navigate(`/alert/${alert.id}`)}>
+                              Tactical View
+                            </Button>
 
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button size="sm" variant="outline" className="font-bold label-caps !text-[9px] border-2">
-                                Assign Unit
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="rounded-xl">
-                              <DialogHeader>
-                                <DialogTitle className="font-display">Dispatch Coordination</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div className="label-caps !text-[11px] text-muted-foreground">Available Personnel</div>
-                                <div className="max-h-64 overflow-auto space-y-2 pr-2">
-                                  {officers?.length
-                                    ? officers.map((o: any) => (
-                                      <Card key={o._id} className="border border-border shadow-none hover:border-secondary transition-colors cursor-pointer">
-                                        <div className="p-4 flex items-center justify-between">
-                                          <div>
-                                            <div className="font-bold text-sm">{o.name || o.email}</div>
-                                            <div className="label-caps !text-[9px] text-muted-foreground">{o.role}</div>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button size="sm" variant="outline" className="font-bold label-caps !text-[9px] border-2">
+                                  Assign Unit
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="rounded-xl">
+                                <DialogHeader>
+                                  <DialogTitle className="font-display">Dispatch Coordination</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div className="label-caps !text-[11px] text-muted-foreground">Available Personnel</div>
+                                  <div className="max-h-64 overflow-auto space-y-2 pr-2">
+                                    {officers?.length
+                                      ? officers.map((o: any) => (
+                                        <Card key={o.id} className="border border-border shadow-none hover:border-secondary transition-colors cursor-pointer">
+                                          <div className="p-4 flex items-center justify-between">
+                                            <div>
+                                              <div className="font-bold text-sm">{o.name || o.email}</div>
+                                              <div className="label-caps !text-[9px] text-muted-foreground">{o.role}</div>
+                                            </div>
+                                            <Button
+                                              size="sm"
+                                              onClick={async () => {
+                                                try {
+                                                  await assignAlert(alert.id, o.id);
+                                                  toast.success("Unit assigned successfully.");
+                                                } catch (e) {
+                                                  toast.error("Dispatch failure.");
+                                                }
+                                              }}
+                                              className="bg-secondary hover:bg-secondary/90 font-bold label-caps !text-[9px]"
+                                            >
+                                              Assign
+                                            </Button>
                                           </div>
-                                          <Button
-                                            size="sm"
-                                            onClick={async () => {
-                                              try {
-                                                await assignAlert({ alertId: alert._id as any, officerId: o._id as any });
-                                                toast.success("Unit assigned successfully.");
-                                              } catch (e) {
-                                                toast.error("Dispatch failure.");
-                                              }
-                                            }}
-                                            className="bg-secondary hover:bg-secondary/90 font-bold label-caps !text-[9px]"
-                                          >
-                                            Assign
-                                          </Button>
-                                        </div>
-                                      </Card>
-                                    ))
-                                    : <p className="text-center py-4 text-xs text-muted-foreground">No units available for dispatch.</p>}
+                                        </Card>
+                                      ))
+                                      : <p className="text-center py-4 text-xs text-muted-foreground">No units available for dispatch.</p>}
+                                  </div>
                                 </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -1,5 +1,4 @@
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
-import { ConvexReactClient } from "convex/react";
+import { SupabaseProvider } from "@/components/auth/SupabaseProvider";
 import { BrowserRouter, Routes, Route } from "react-router";
 import { Toaster } from "sonner";
 
@@ -14,13 +13,16 @@ import LocationShare from "@/pages/LocationShare";
 import Notifications from "@/pages/Notifications";
 import Translator from "@/pages/Translator";
 import AdminFabric from "@/pages/AdminFabric";
+import HighAuthority from "@/pages/HighAuthority";
+import AlertDetail from "@/pages/AlertDetail";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import NotFound from "@/pages/NotFound";
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+// Removed Convex client initialization
 
 export default function App() {
     return (
-        <ConvexAuthProvider client={convex}>
+        <SupabaseProvider>
             <BrowserRouter>
                 <Toaster richColors position="top-right" />
                 <Routes>
@@ -34,10 +36,37 @@ export default function App() {
                     <Route path="/location" element={<LocationShare />} />
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/translator" element={<Translator />} />
-                    <Route path="/admin/fabric" element={<AdminFabric />} />
+                    <Route path="/fabric-admin" element={<AdminFabric />} />
+                    <Route
+                        path="/alert/:id"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "tourism_official"]}>
+                                <AlertDetail />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Protected Routes */}
+                    <Route
+                        path="/admin/fabric"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin"]}>
+                                <AdminFabric />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/high-authority"
+                        element={
+                            <ProtectedRoute allowedRoles={["admin", "tourism_official"]}>
+                                <HighAuthority />
+                            </ProtectedRoute>
+                        }
+                    />
+
                     <Route path="*" element={<NotFound />} />
                 </Routes>
             </BrowserRouter>
-        </ConvexAuthProvider>
+        </SupabaseProvider>
     );
 }

@@ -4,8 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { api } from "@/convex/_generated/api";
-import { useMutation, useAction } from "convex/react";
 import { useState } from "react";
 import { Shield, Settings, History, FileCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -15,7 +13,6 @@ export default function AdminFabric() {
   const [result, setResult] = useState<string>("");
 
   // Layer 1: Identity
-  const issue = useAction(api.fabric.issueDigitalId);
   const [userId, setUserId] = useState("");
   const [passportNumber, setPassportNumber] = useState("");
   const [nationality, setNationality] = useState("");
@@ -23,29 +20,32 @@ export default function AdminFabric() {
   const [expiryDateMs, setExpiryDateMs] = useState(String(Date.now() + 7 * 24 * 60 * 60 * 1000));
 
   // Layer 3: Governance
-  const updateGovernance = useAction(api.fabric.updateSystemGovernance);
   const [govKey, setGovKey] = useState("SAFETY_THRESHOLD");
   const [govValue, setGovValue] = useState("70");
 
   // Layer 3: Audit Logs
-  const getAuditLogs = useAction(api.fabric.getGlobalAuditLogs);
   const [auditFilter, setAuditFilter] = useState("");
 
   const onIssue = async () => {
     setLoading(true);
     try {
-      const res = await issue({
-        userId,
-        fullName: "System Restricted",
-        passportNumber,
-        nationality,
-        dateOfBirth: "1970-01-01",
-        bloodGroup: "U",
-        medicalConditionsJson: "{}",
-        emergencyContactsJson,
-        itineraryJson: "{}",
-        expiryDateMs: Number(expiryDateMs),
+      const response = await fetch('http://localhost:3001/api/issue-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          fullName: "System Restricted",
+          passportNumber,
+          nationality,
+          dateOfBirth: "1970-01-01",
+          bloodGroup: "U",
+          medicalConditionsJson: "{}",
+          emergencyContactsJson,
+          itineraryJson: "{}",
+          expiryDateMs: Number(expiryDateMs),
+        })
       });
+      const res = await response.json();
       setResult(JSON.stringify(res, null, 2));
       toast.success("Identity Issued");
     } catch (e: any) {
@@ -59,10 +59,15 @@ export default function AdminFabric() {
   const onUpdateGovernance = async () => {
     setLoading(true);
     try {
-      const res = await updateGovernance({
-        settingKey: govKey,
-        settingValue: govValue,
+      const response = await fetch('http://localhost:3001/api/update-governance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settingKey: govKey,
+          settingValue: govValue,
+        })
       });
+      const res = await response.json();
       setResult(JSON.stringify(res, null, 2));
       toast.success("Governance Updated");
     } catch (e: any) {
@@ -76,7 +81,12 @@ export default function AdminFabric() {
   const onFetchAuditLogs = async () => {
     setLoading(true);
     try {
-      const res = await getAuditLogs({ filter: auditFilter });
+      const response = await fetch('http://localhost:3001/api/audit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filter: auditFilter })
+      });
+      const res = await response.json();
       setResult(JSON.stringify(res, null, 2));
       toast.success("Logs Fetched");
     } catch (e: any) {

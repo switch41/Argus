@@ -13,83 +13,13 @@ import {
   Globe,
   Eye,
   ArrowRight,
-  CloudSun,
-  Thermometer,
-  Wind,
-  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function Landing() {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-
-  // Add: local weather state
-  const [weatherLoading, setWeatherLoading] = useState(false);
-  const [weatherError, setWeatherError] = useState<string | null>(null);
-  const [weather, setWeather] = useState<{
-    tempC: number;
-    windKph: number;
-    code: number;
-  } | null>(null);
-
-  const fetchWeather = async (lat: number, lon: number) => {
-    try {
-      setWeatherLoading(true);
-      setWeatherError(null);
-      // Open-Meteo free, no API key
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m&wind_speed_unit=kmh`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch weather");
-      const data = await res.json();
-      setWeather({
-        tempC: data?.current?.temperature_2m ?? 0,
-        windKph: data?.current?.wind_speed_10m ?? 0,
-        code: data?.current?.weather_code ?? 0,
-      });
-    } catch (e) {
-      setWeatherError("Unable to load weather for your area.");
-      setWeather(null);
-    } finally {
-      setWeatherLoading(false);
-    }
-  };
-
-  const acquireAndFetchWeather = () => {
-    if (!("geolocation" in navigator)) {
-      setWeatherError("Geolocation not supported by your browser.");
-      return;
-    }
-    setWeatherError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        fetchWeather(pos.coords.latitude, pos.coords.longitude);
-      },
-      () => {
-        setWeatherError("Location permission denied. Please allow location access.");
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
-    );
-  };
-
-  useEffect(() => {
-    acquireAndFetchWeather();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Helper to map weather codes to a small label
-  const describeWeatherCode = (code: number) => {
-    // minimal mapping for common codes
-    if ([0].includes(code)) return "Clear";
-    if ([1, 2, 3].includes(code)) return "Partly Cloudy";
-    if ([45, 48].includes(code)) return "Fog";
-    if ([51, 53, 55, 61, 63, 65].includes(code)) return "Rain";
-    if ([71, 73, 75, 77].includes(code)) return "Snow";
-    if ([80, 81, 82].includes(code)) return "Showers";
-    if ([95, 96, 99].includes(code)) return "Thunderstorm";
-    return "Weather";
-  };
 
   const features = [
     {
@@ -209,64 +139,6 @@ export default function Landing() {
               </Button>
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* Weather + Quick SOS */}
-      <section className="py-12 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="md:col-span-2 border border-border bg-card shadow-none overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded bg-secondary flex items-center justify-center">
-                      <CloudSun className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <div className="label-caps !text-muted-foreground mb-1">Local Travel Conditions</div>
-                      <div className="text-xl font-bold tracking-tight">
-                        {weatherLoading ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" /> Analyzing...
-                          </span>
-                        ) : weather ? (
-                          <>
-                            {describeWeatherCode(weather.code)} •{" "}
-                            <span className="mono-data !text-primary">
-                              {Math.round(weather.tempC)}°C
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-destructive font-medium">{weatherError || "Service Offline"}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="h-8 w-[1px] bg-border hidden sm:block" />
-                    <div className="flex flex-col items-end">
-                      <div className="label-caps !text-[10px] text-muted-foreground mb-1">Wind Speed</div>
-                      <div className="mono-data text-primary">{weather?.windKph ? `${Math.round(weather.windKph)} KM/H` : "--"}</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-accent bg-accent/5 shadow-none overflow-hidden hover:bg-accent/10 transition-colors cursor-pointer group" onClick={() => navigate("/emergency")}>
-              <CardContent className="p-6 flex flex-col justify-between h-full">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="label-caps text-accent font-bold">Emergency Signal</div>
-                  <AlertTriangle className="h-5 w-5 text-accent animate-pulse" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold tracking-tight mb-1 text-accent">Quick SOS Trigger</div>
-                  <p className="text-sm text-accent/80">Instant authority dispatch</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </section>
 

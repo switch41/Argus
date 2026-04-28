@@ -20,27 +20,27 @@ export class SafeTourContract extends Contract {
 
     @Transaction()
     public async IssueDigitalId(
-        ctx: Context, 
-        userId: string, 
+        ctx: Context,
+        userId: string,
         fullName: string,
-        passport: string, 
+        passport: string,
         nationality: string,
         dob: string,
         bloodGroup: string,
         medicalInfo: string
     ): Promise<string> {
         // Layer 1: Storage for "Every info of the individual"
-        const idData = { 
-            userId, 
+        const idData = {
+            userId,
             fullName,
-            passport, 
-            nationality, 
+            passport,
+            nationality,
             dob,
             bloodGroup,
             medicalInfo,
-            verified: true 
+            verified: true
         };
-        const idHash = ctx.stub.getBinding(); 
+        const idHash = ctx.stub.getBinding();
         await ctx.stub.putState(`DID_${idHash}`, Buffer.from(JSON.stringify(idData)));
         return idHash;
     }
@@ -54,11 +54,11 @@ export class SafeTourContract extends Contract {
         // Verify that the caller belongs to an Official Org (Police/Hospital)
         const clientOrg = ctx.clientIdentity.getMSPID();
         if (clientOrg !== 'OfficialOrg') {
-             throw new Error('Only Official organizations can file incident reports.');
+            throw new Error('Only Official organizations can file incident reports.');
         }
 
         const incident = { firId, touristId, sensitiveData, status: 'FILED' };
-        
+
         // Store in a Private Data Collection (PDC) instead of the public ledger
         // PDC ensures only members of 'collectionOfficial' can see the actual content
         await ctx.stub.putPrivateData('collectionOfficial', firId, Buffer.from(JSON.stringify(incident)));
@@ -82,7 +82,7 @@ export class SafeTourContract extends Contract {
         // Strict Admin check
         const clientOrg = ctx.clientIdentity.getMSPID();
         if (clientOrg !== 'GovernmentOrg') {
-             throw new Error('Unauthorized: Admin access required.');
+            throw new Error('Unauthorized: Admin access required.');
         }
         await ctx.stub.putState(`SETTING_${key}`, Buffer.from(value));
     }
@@ -90,7 +90,7 @@ export class SafeTourContract extends Contract {
     @Transaction(false)
     public async GetAuditLogs(ctx: Context, filter: string): Promise<string[]> {
         // Returns a history of transactions for auditing
-        const results = [];
+        const results: string[] = [];
         const iterator = await ctx.stub.getQueryResult(JSON.stringify({ selector: { type: 'audit' } }));
         // Logic to iterate and filter...
         return results;

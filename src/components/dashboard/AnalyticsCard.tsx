@@ -1,13 +1,41 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useSupabase } from "@/components/auth/SupabaseProvider";
+import { useEffect, useState } from "react";
 import { Download, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AnalyticsCard() {
-  const analytics = useQuery(api.analytics.getOverview);
-  const incidents = useQuery(api.alerts.listAllIncidents, { limit: 100 });
+  const { supabase, user } = useSupabase();
+  const [analytics, setAnalytics] = useState<any>({ totalTourists: 0, totalAlerts: 0, topRiskAreas: [] });
+  const [incidents, setIncidents] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchAnalytics = async () => {
+      const { count: touristCount } = await supabase
+        .from('tourist_profiles')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: alertCount } = await supabase
+        .from('alerts')
+        .select('*', { count: 'exact', head: true });
+
+      const { data: recentIncidents } = await supabase
+        .from('alerts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      setAnalytics({
+        totalTourists: touristCount || 0,
+        totalAlerts: alertCount || 0,
+        topRiskAreas: [] // Logic for top areas would involve spatial grouping
+      });
+      setIncidents(recentIncidents || []);
+    };
+    fetchAnalytics();
+  }, [user, supabase]);
 
   const handleExport = () => {
     try {
@@ -23,14 +51,14 @@ export default function AnalyticsCard() {
               ? `"${alert.location.latitude},${alert.location.longitude}"`
               : "";
           return [
-            alert._id,
-            alert.alertType,
+            alert.id,
+            alert.alert_type,
             alert.severity,
             `"${alert.title}"`,
             `"${alert.description || ""}"`,
-            new Date(alert._creationTime).toISOString(),
-            alert.isResolved ? new Date(alert.resolvedAt || 0).toISOString() : "",
-            alert.responseTime || "",
+            new Date(alert.created_at).toISOString(),
+            alert.is_resolved ? new Date(alert.resolved_at || 0).toISOString() : "",
+            alert.response_time || "",
             location,
           ].join(",");
         })

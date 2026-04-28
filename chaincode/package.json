@@ -1,0 +1,13 @@
+{
+    "name": "safetour-chaincode",
+    "version": "1.0.0",
+    "description": "SafeTravelID Chaincode",
+    "main": "SafeTourContract.ts",
+    "dependencies": {
+        "fabric-contract-api": "^2.5.4",
+        "fabric-shim": "^2.5.4"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0"
+    }
+}

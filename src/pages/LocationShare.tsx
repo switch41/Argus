@@ -2,18 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from "@/convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
-import { useMutation } from "convex/react";
+import { useSupabase } from "@/components/auth/SupabaseProvider";
 import { MapPin, Loader2, ArrowLeft, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 export default function LocationShare() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, supabase } = useSupabase();
   const navigate = useNavigate();
-  const updateLocation = useMutation(api.tourists.updateLocation);
 
   const [coords, setCoords] = useState<{ lat: number; lon: number; acc: number } | null>(null);
   const [locationName, setLocationName] = useState("");
@@ -73,13 +70,26 @@ export default function LocationShare() {
     }
     setIsSharing(true);
     try {
-      await updateLocation({
-        latitude: coords.lat,
-        longitude: coords.lon,
-        accuracy: coords.acc || 0,
-        isManual: true,
-        locationName: locationName || undefined,
-      });
+      const { data: profile } = await supabase
+        .from('tourist_profiles')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profile) throw new Error("Profile not found");
+
+      const { error } = await supabase
+        .from('location_history')
+        .insert({
+          tourist_id: profile.id,
+          latitude: coords.lat,
+          longitude: coords.lon,
+          accuracy: coords.acc || 0,
+          is_manual: true,
+          location_name: locationName || undefined,
+        });
+
+      if (error) throw error;
       toast.success("Location shared!");
       navigate("/dashboard");
     } catch (e) {

@@ -3,23 +3,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
-import { useMutation, useQuery } from "convex/react";
+import { useSupabase } from "@/components/auth/SupabaseProvider";
 import { Calendar, MapPin, Route, Trash2, Loader2, Plus, ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 export default function Itinerary() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, supabase } = useSupabase();
   const navigate = useNavigate();
 
-  const createItinerary = useMutation(api.tourists.createItinerary);
-  const deleteItinerary = useMutation(api.tourists.deleteItinerary);
-  const myItineraries = useQuery(api.tourists.listMyItineraries);
-
+  const [myItineraries, setMyItineraries] = useState<any[] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fetchItineraries = async () => {
+    if (!user) return;
+    const { data: profile } = await supabase
+      .from('tourist_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+    if (!profile) return;
+
+    const { data } = await supabase
+      .from('itineraries')
+      .select('*')
+      .eq('tourist_id', profile.id)
+      .order('created_at', { ascending: false });
+    setMyItineraries(data || []);
+  };
+
+  useEffect(() => {
+    fetchItineraries();
+  }, [user, supabase]);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -49,21 +65,34 @@ export default function Itinerary() {
         toast.error("Please fill the first stop details.");
         return;
       }
-      await createItinerary({
-        title: form.title,
-        description: form.description || undefined,
-        startDate: new Date(form.startDate).getTime(),
-        endDate: new Date(form.endDate).getTime(),
-        plannedRoute: [
-          {
-            latitude: parseFloat(form.stop.latitude),
-            longitude: parseFloat(form.stop.longitude),
-            locationName: form.stop.locationName,
-            plannedArrival: new Date(form.stop.plannedArrival).getTime(),
-          },
-        ],
-      });
+      const { data: profile } = await supabase
+        .from('tourist_profiles')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
+      if (!profile) throw new Error("Profile not found");
+
+      const { error } = await supabase
+        .from('itineraries')
+        .insert({
+          tourist_id: profile.id,
+          title: form.title,
+          description: form.description || undefined,
+          start_date: new Date(form.startDate).getTime(),
+          end_date: new Date(form.endDate).getTime(),
+          planned_route: [
+            {
+              latitude: parseFloat(form.stop.latitude),
+              longitude: parseFloat(form.stop.longitude),
+              locationName: form.stop.locationName,
+              plannedArrival: new Date(form.stop.plannedArrival).getTime(),
+            },
+          ],
+        });
+
+      if (error) throw error;
       toast.success("Itinerary created.");
+      fetchItineraries();
       setForm({
         title: "",
         description: "",
@@ -81,8 +110,13 @@ export default function Itinerary() {
 
   const remove = async (id: string) => {
     try {
-      await deleteItinerary({ itineraryId: id as any });
+      const { error } = await supabase
+        .from('itineraries')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
       toast.success("Itinerary deleted.");
+      fetchItineraries();
     } catch (e) {
       console.error(e);
       toast.error("Failed to delete itinerary.");
@@ -248,38 +282,38 @@ export default function Itinerary() {
                 </div>
               ) : (
                 myItineraries.map((it: any) => (
-                  <Card key={it._id} className="border border-border bg-card shadow-sm hover:shadow-md transition-shadow rounded-xl overflow-hidden">
+                  <Card key={it.id} className="border border-border bg-card shadow-sm hover:shadow-md transition-shadow rounded-xl overflow-hidden">
                     <div className="p-4 flex items-center justify-between border-b border-border bg-muted/30">
                       <div className="space-y-1">
                         <div className="font-display font-bold text-lg uppercase tracking-tight text-primary">{it.title}</div>
                         <div className="flex items-center gap-3 text-[10px] font-black label-caps text-secondary tracking-widest">
                           <Calendar className="h-3 w-3" />
-                          {new Date(it.startDate).toLocaleDateString()} // {new Date(it.endDate).toLocaleDateString()}
+                          {new Date(it.start_date).toLocaleDateString()} // {new Date(it.end_date).toLocaleDateString()}
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => remove(it._id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 font-bold label-caps text-[10px]">
+                      <Button variant="ghost" size="sm" onClick={() => remove(it.id)} className="text-red-500 hover:text-red-600 hover:bg-red-50 font-bold label-caps text-[10px]">
                         <Trash2 className="h-4 w-4 mr-2" /> TERMINATE
                       </Button>
                     </div>
                     <CardContent className="p-6 space-y-4">
-                      {it.plannedRoute?.[0] && (
+                      {it.planned_route?.[0] && (
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="p-2 bg-secondary/10 rounded-lg">
                                 <MapPin className="h-4 w-4 text-secondary" />
                               </div>
-                              <span className="font-bold text-sm text-primary uppercase">{it.plannedRoute[0].locationName}</span>
+                              <span className="font-bold text-sm text-primary uppercase">{it.planned_route[0].locationName}</span>
                             </div>
-                            <span className="mono-data text-[10px] tracking-widest">[{it.plannedRoute[0].latitude.toFixed(4)}, {it.plannedRoute[0].longitude.toFixed(4)}]</span>
+                            <span className="mono-data text-[10px] tracking-widest">[{it.planned_route[0].latitude.toFixed(4)}, {it.planned_route[0].longitude.toFixed(4)}]</span>
                           </div>
 
                           <div className="relative group overflow-hidden rounded-lg border-2 border-border h-48 bg-muted">
                             <iframe
-                              title={`map-${it._id}`}
+                              title={`map-${it.id}`}
                               className="absolute inset-0 w-full h-full grayscale-[0.5] contrast-[1.1] brightness-[0.9] hover:grayscale-0 transition-all duration-500"
                               loading="lazy"
-                              src={`https://maps.google.com/maps?q=${it.plannedRoute[0].latitude},${it.plannedRoute[0].longitude}&z=14&output=embed`}
+                              src={`https://maps.google.com/maps?q=${it.planned_route[0].latitude},${it.planned_route[0].longitude}&z=14&output=embed`}
                             />
                           </div>
                         </div>

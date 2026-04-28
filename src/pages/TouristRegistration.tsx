@@ -5,23 +5,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
+import { useSupabase } from "@/components/auth/SupabaseProvider";
 import { motion } from "framer-motion";
 import { Shield, ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 export default function TouristRegistration() {
-  const { user } = useAuth();
+  const { supabase, user } = useSupabase();
+  const { isAuthenticated, isAnonymous } = useAuth();
   const navigate = useNavigate();
-  const createProfile = useMutation(api.tourists.createProfile);
 
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     passportNumber: "",
     nationality: "",
+    fullName: "",
+    dateOfBirth: "",
+    bloodGroup: "",
     emergencyContact1: {
       name: "",
       phone: "",
@@ -39,29 +42,83 @@ export default function TouristRegistration() {
     medicalConditions: "",
   });
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/auth");
+      return;
+    }
+    if (isAnonymous) {
+      toast.error("Guest mode cannot create Digital ID. Please sign in with email.");
+      navigate("/auth");
+    }
+  }, [isAuthenticated, isAnonymous, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
     setIsLoading(true);
     try {
-      await createProfile({
-        passportNumber: formData.passportNumber,
-        nationality: formData.nationality,
-        emergencyContact1: formData.emergencyContact1,
-        emergencyContact2: formData.emergencyContact2.name ? formData.emergencyContact2 : undefined,
-        entryPoint: formData.entryPoint,
-        plannedDuration: parseInt(formData.plannedDuration),
-        accommodationAddress: formData.accommodationAddress || undefined,
-        localGuideContact: formData.localGuideContact || undefined,
-        medicalConditions: formData.medicalConditions || undefined,
-      });
+      // 1. Insert into tourist_profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('tourist_profiles')
+        .insert({
+          user_id: user.id,
+          full_name: formData.fullName,
+          passport_number: formData.passportNumber,
+          nationality: formData.nationality,
+          date_of_birth: formData.dateOfBirth,
+          blood_group: formData.bloodGroup,
+          emergency_contact_1: formData.emergencyContact1,
+          emergency_contact_2: formData.emergencyContact2.name ? formData.emergencyContact2 : null,
+          entry_point: formData.entryPoint,
+          planned_duration: parseInt(formData.plannedDuration),
+          accommodation_address: formData.accommodationAddress || null,
+          local_guide_contact: formData.localGuideContact || null,
+          medical_conditions: formData.medicalConditions || null,
+          expiry_date: Date.now() + (parseInt(formData.plannedDuration) * 24 * 60 * 60 * 1000),
+          is_active: true
+        })
+        .select()
+        .single();
 
-      toast.success("Digital Tourist ID created successfully!");
+      if (profileError) throw profileError;
+
+      // 2. Sync to Fabric Gateway
+      console.log("Profile created in Supabase. Syncing to Fabric...");
+      try {
+        const fabricResponse = await fetch('http://localhost:3001/api/issue-id', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            fullName: formData.fullName,
+            passportNumber: formData.passportNumber,
+            nationality: formData.nationality,
+            dateOfBirth: formData.dateOfBirth,
+            bloodGroup: formData.bloodGroup,
+            emergencyContactsJson: JSON.stringify(formData.emergencyContact1),
+            expiryDateMs: Date.now() + (parseInt(formData.plannedDuration) * 24 * 60 * 60 * 1000)
+          })
+        });
+        const fabricData = await fabricResponse.json();
+
+        if (fabricData.success) {
+          // 3. Update Supabase with Hash
+          await supabase
+            .from('tourist_profiles')
+            .update({ digital_id_hash: fabricData.digitalIdHash })
+            .eq('id', profile.id);
+          toast.success("Digital Tourist ID issued on ledger!");
+        }
+      } catch (err) {
+        console.warn("Fabric sync failed, but local profile is active:", err);
+      }
+
       navigate("/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
-      toast.error("Failed to create profile. Please try again.");
+      toast.error(`Registration failed: ${error.message || "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }
@@ -128,6 +185,18 @@ export default function TouristRegistration() {
             <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
+                  <Label htmlFor="fullName" className="label-caps !text-[10px] text-primary">Full Legal Name</Label>
+                  <Input
+                    id="fullName"
+                    value={formData.fullName}
+                    onChange={(e) => updateFormData("fullName", e.target.value)}
+                    placeholder="As per passport"
+                    className="h-12 border-2 focus:ring-secondary font-medium"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="passport" className="label-caps !text-[10px] text-primary">Passport Number</Label>
                   <Input
                     id="passport"
@@ -149,6 +218,33 @@ export default function TouristRegistration() {
                     className="h-12 border-2 focus:ring-secondary font-medium"
                     required
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dob" className="label-caps !text-[10px] text-primary">Date of Birth</Label>
+                    <Input
+                      id="dob"
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={(e) => updateFormData("dateOfBirth", e.target.value)}
+                      className="h-12 border-2 focus:ring-secondary font-medium"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bloodGroup" className="label-caps !text-[10px] text-primary">Blood Group</Label>
+                    <Select onValueChange={(value) => updateFormData("bloodGroup", value)}>
+                      <SelectTrigger className="h-12 border-2 focus:ring-secondary font-bold">
+                        <SelectValue placeholder="B+" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(bg => (
+                          <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 

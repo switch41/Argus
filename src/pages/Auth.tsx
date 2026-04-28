@@ -46,7 +46,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       verifyCode: "Verify code",
       verifying: "Verifying...",
       useDifferentEmail: "Use different email",
-      securedByConvex: "Secured by Convex",
+      securedBySupabase: "Secured by Supabase",
       language: "Language",
       emailPlaceholder: "name@example.com",
     },
@@ -61,7 +61,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       verifyCode: "Verificar código",
       verifying: "Verificando...",
       useDifferentEmail: "Usar otro correo",
-      securedByConvex: "Asegurado por Convex",
+      securedBySupabase: "Asegurado por Supabase",
       language: "Idioma",
       emailPlaceholder: "nombre@ejemplo.com",
     },
@@ -76,7 +76,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       verifyCode: "कोड सत्यापित करें",
       verifying: "सत्यापित हो रहा है...",
       useDifferentEmail: "अलग ईमेल का उपयोग करें",
-      securedByConvex: "Convex द्वारा सुरक्षित",
+      securedBySupabase: "Supabase द्वारा सुरक्षित",
       language: "भाषा",
       emailPlaceholder: "name@example.com",
     },
@@ -93,7 +93,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      const redirect = redirectAfterAuth || "/";
+      const redirect = redirectAfterAuth || "/dashboard";
       navigate(redirect);
     }
   }, [authLoading, isAuthenticated, navigate, redirectAfterAuth]);
@@ -127,7 +127,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
       console.log("signed in");
 
-      const redirect = redirectAfterAuth || "/";
+      const redirect = redirectAfterAuth || "/dashboard";
       navigate(redirect);
     } catch (error) {
       console.error("OTP verification error:", error);
@@ -144,14 +144,21 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     setError(null);
     try {
       console.log("Attempting anonymous sign in...");
-      await signIn("anonymous");
+      await signIn("anonymous", {});
       console.log("Anonymous sign in successful");
-      const redirect = redirectAfterAuth || "/";
-      navigate(redirect);
+      navigate("/dashboard", { replace: true });
     } catch (error) {
       console.error("Guest login error:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
-      setError(`Failed to sign in as guest: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const rawMessage = error instanceof Error ? error.message : "Unknown error";
+      if (rawMessage.toLowerCase().includes("anonymous sign-ins are disabled")) {
+        setError(
+          "Guest mode is disabled in Supabase. Enable Anonymous provider in Supabase Auth settings, then try again."
+        );
+      } else {
+        setError(`Failed to sign in as guest: ${rawMessage}`);
+      }
+    } finally {
       setIsLoading(false);
     }
   };
@@ -336,7 +343,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
             <div className="py-4 px-6 bg-muted/30 border-t border-border flex items-center justify-center gap-2">
               <Shield className="h-4 w-4 text-muted-foreground" />
-              <span className="label-caps !text-[9px] text-muted-foreground tracking-[0.2em]">{t("securedByConvex")}</span>
+              <span className="label-caps !text-[9px] text-muted-foreground tracking-[0.2em]">{t("securedBySupabase")}</span>
             </div>
           </Card>
         </div>
