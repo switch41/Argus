@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Shield, Settings, History, FileCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { apiUrl } from "@/lib/api";
 
 export default function AdminFabric() {
   const [loading, setLoading] = useState(false);
@@ -29,7 +30,7 @@ export default function AdminFabric() {
   const onIssue = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/issue-id', {
+      const response = await fetch(apiUrl('/api/issue-id'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,7 +60,7 @@ export default function AdminFabric() {
   const onUpdateGovernance = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/update-governance', {
+      const response = await fetch(apiUrl('/api/update-governance'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -81,7 +82,7 @@ export default function AdminFabric() {
   const onFetchAuditLogs = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/audit-logs', {
+      const response = await fetch(apiUrl('/api/audit-logs'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filter: auditFilter })

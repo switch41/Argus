@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { useSupabase } from "@/components/auth/SupabaseProvider";
+import { apiUrl } from "@/lib/api";
 
 export default function Profile() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -55,7 +56,7 @@ export default function Profile() {
     (async () => {
       try {
         setIsLoadingWallet(true);
-        const response = await fetch('http://localhost:3001/api/get-wallet', {
+        const response = await fetch(apiUrl('/api/get-wallet'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user._id })
@@ -88,7 +89,7 @@ export default function Profile() {
       const userType =
         user.role === "police" || user.role === "tourism_official" ? "operator" : "tourist";
 
-      const response = await fetch('http://localhost:3001/api/issue-id', {
+      const response = await fetch(apiUrl('/api/issue-id'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ touristId: user._id, fullName: user.name, passportNumber: "" })
@@ -113,7 +114,7 @@ export default function Profile() {
     }
     try {
       setIsLinking(true);
-      const response = await fetch('http://localhost:3001/api/link-wallet', {
+      const response = await fetch(apiUrl('/api/link-wallet'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user._id, walletAddress: addr })
@@ -138,7 +139,7 @@ export default function Profile() {
     }
     try {
       setVerifyLoading(true);
-      const response = await fetch('http://localhost:3001/api/verify-id', {
+      const response = await fetch(apiUrl('/api/verify-id'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ digitalIdHash: currentProfile.digitalIdHash })

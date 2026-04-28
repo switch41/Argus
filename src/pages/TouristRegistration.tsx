@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { apiUrl } from "@/lib/api";
 
 export default function TouristRegistration() {
   const { supabase, user } = useSupabase();
@@ -87,7 +88,7 @@ export default function TouristRegistration() {
       // 2. Sync to Fabric Gateway
       console.log("Profile created in Supabase. Syncing to Fabric...");
       try {
-        const fabricResponse = await fetch('http://localhost:3001/api/issue-id', {
+        const fabricResponse = await fetch(apiUrl('/api/issue-id'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldCheck, Search, Loader2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { apiUrl } from "@/lib/api";
 
 export default function DigitalIdVerifier() {
     const [hash, setHash] = useState("");
@@ -17,7 +18,7 @@ export default function DigitalIdVerifier() {
         setLoading(true);
         setRevealedData(null);
         try {
-            const response = await fetch('http://localhost:3001/api/reveal-data', {
+            const response = await fetch(apiUrl('/api/reveal-data'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ digitalIdHash: hash })
